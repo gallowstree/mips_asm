@@ -513,3 +513,4 @@
 	strcmp_false:
 		li	$v0 0
 		jr 	$ra
+
