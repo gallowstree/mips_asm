@@ -1,3 +1,4 @@
+
 .data
 	##############PROGRAMA A CODIFICAR################
 	programa: .asciiz ".text\n"
