@@ -564,7 +564,11 @@
 		li 	$t7 '$'			# voy a utilizarlo para verificar que viene un registro
 		li	$t6 'a'			# aX -> argumentos
 		li	$t5 'v'			# vX -> valores de retorno
-		li	$t4 '0'			# cero
+		li 	$t4 't'
+		li 	$t3 's'
+		li   $t2 'r'
+		li	$t1 '0'			# cero
+
 
 		lb 	$t0 0($s0)
 		addi	$s0 $s0 1
@@ -573,21 +577,48 @@
 		addi	$s0 $s0 1
 		beq	$t0 $t6 asm_regs_ax		# verifico a que grupo pertence para sumarle un offset
 		beq	$t0 $t5 asm_regs_vx
-		beq	$t0 $t4 asm_regs_zero
+		beq  $t0 $t4 asm_regs_tx
+		beq  $t0 $t3 asm_regs_sx		# aqui tambien evaluamos si es $sp
+		beq  $t0 $t2 asm_regs_ra		# si es ra
+		beq	$t0 $t1 asm_regs_zero
 		j	asm_regs_error		# no es ninguno... error
 
 	asm_regs_zero:		# caso trivial 
 		li	$v0 0
+		j	asm_regs_exit
+		
+	asm_regs_vx:
+		jal	ascii_to_int
+		addi	$v0 $v0 2
 		j	asm_regs_exit
 
 	asm_regs_ax:		# le pongo de base $a0 y sumo su offset
 		jal	ascii_to_int	# ($a0 = 4) => ($a3 - $a0) + 4 = 7
 		addi	$v0 $v0 4
 		j asm_regs_exit
-
-	asm_regs_vx:
+	
+	asm_regs_tx:
 		jal	ascii_to_int
-		addi	$v0 $v0 2
+		addi	$v0 $v0 8
+		j	asm_regs_exit
+		
+	asm_regs_sx:
+		lb 	$t0 0($s0)
+		beq 	$t0 'p' asm_regs_sp	 	#si es un sp devolvemos 29
+		jal	ascii_to_int
+		addi	$v0 $v0 16
+		j	asm_regs_exit
+	
+	asm_regs_sp:
+		addi $s0 $s0 1			# advance the char pointer
+		li	$v0 29
+		j	asm_regs_exit
+	
+	asm_regs_ra:
+		lb 	$t0 0($s0)
+		bne 	$t0 'a' asm_regs_error 	#si no es ra devolvemos error
+		addi $s0 $s0 1				# advance the char pointer
+		li 	$v0 31
 		j	asm_regs_exit
 
 	asm_regs_exit:
