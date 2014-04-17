@@ -466,31 +466,38 @@
 		asm_text:
 			j exit
 		asm_r_type:			#codifica instrucciones tipo r, 
-			move	$s5 $a0		#a0 es una bandera que indica si necesitamos tomar en cuenta corrimiento
-			addi	$s0 $s0 1	#eliminar espacio
-			jal 	asm_regs	#número de registro rd
-			add	$s2 $0 $v0	#ponemos rd en t0 con todo lo demás en 0
-			sll	$s2 $s2 11	#corremos rd 11 bits (shamt + func)
 			
 			addi	$s0 $s0 1	#eliminar espacio
-			jal	asm_regs	#número de registro rs
-			add	$s3 $0 $v0	#ponemos rs en t1 con lo demás en 0
-			sll	$s3 $s3 21	#corremos rs 21 bits (shamt + func + rt + rd)
+			jal 	asm_regs	#n?mero de registro rd
+			add	$s4 $0 $v0	#ponemos rd en s4 con todo lo dem?s en 0
+			sll	$s4 $s4 11	#corremos rd 11 bits (shamt + func)
+			or	$s7 $s7 $s4	#apendar rd y funct
 			
 			addi	$s0 $s0 1	#eliminar espacio
-			jal	asm_regs	#número de registro rt
-			add	$s4 $0 $v0	#ponemos rt en t2 con todo lo demás en 0
+			jal	asm_regs	#n?mero de registro rs
+			add	$s4 $0 $v0	#ponemos rs en s4 con lo dem?s en 0
+			sll	$s4 $s4 21	#corremos rs 21 bits (shamt + func + rt + rd)
+			or	$s7 $s7 $s4	#apendar funct
+			
+			lw	$s4 asm_flag	#bandera que indica si necesitamos tomar en cuenta corrimiento
+			beqz	$s4 no_shamt
+			addi	$s0 $s0 1	#eliminar espacio
+			jal	ascii_to_int	#obtenemos el shamt
+			add	$s4 $0 $v0	#shamt en s4
+			sll	$s4 $s4 6	#shift de 6 bits (funct)
+			or	$s7 $s7 $s4	#apendar shamt
+			j 	asm_r_done
+		no_shamt: 
+			addi	$s0 $s0 1	#eliminar espacio
+			jal	asm_regs	#n?mero de registro rt
+			add	$s4 $0 $v0	#ponemos rt en t2 con todo lo dem?s en 0
 			sll	$s4 $s4 16	#corremos rt 16 bits (shamt + func + rd)
-			
-			beqz	$s5 no_shamt
-			#TO DO: Lógica para instrucciones con shamt != 0
-			
-		no_shamt:
-			or	$s7 $s7 $s2	#apendamos func y rd
-			or	$s7 $s7 $s3	#apendamos func y rd con rs
-			or	$s7 $s7 $s4	#apendamos func, rd y rs con rt
+			or	$s7 $s7 $s4
+		asm_r_done:
 			sw 	$s7 0($s1)	# almaceno la instruccion codificada
 			addi 	$s1 $s1 4
+			li	$s5 0
+			sw	$s5 asm_flag	#setear flag a 0
 			j asm_text_loop
 			j exit
 
