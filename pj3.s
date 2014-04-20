@@ -1,6 +1,6 @@
 .data
 	##############PROGRAMA A CODIFICAR################
-	programa: .asciiz "ori $a1 $0 15\nori $v0 $0 1\nadd $a0 $a1 $v0\nsub $a0 $a0 $v0\nsyscall\nori $v0 $0 10\nsyscall"
+	programa: .asciiz "ori $a1 $0 15\nabs $v1 $v0\n  ori"
 
 	##################################################
 
@@ -14,7 +14,12 @@
 		la	$a1 text
 		la	$a2 data
 		jal	ensamblador	
-		jr	$v0
+
+		la $a0 program_buffer
+		li $v0 4
+        	syscall
+
+		#jr	$v0
 		j	exit
 
 
@@ -74,14 +79,21 @@
 		str_subu:		.asciiz	"subu"
 		str_sw:		.asciiz	"sw"
 		str_syscall:	.asciiz	"syscall"
+	#flags and variables
+		program_buffer: .space 400
+		reg1:		 .space 4
+		reg2:		 .space 4
+		value:		 .space 30
+		asm_flag:		 .word 0
 	#códigos de error:
 		err_unknown:	.asciiz "error desconocido \n"
 		err_0:		.asciiz "instrucción inválida \n"
 	.text	
 		#backup a la memoria
-		addi	$sp $sp -44
-		sw	$a2 40($sp)
-		sw	$a1 36($sp)
+		addi	$sp $sp -48
+		sw	$a2 44($sp)
+		sw	$a1 40($sp)
+		sw  	$a0 36($sp)
 		sw	$ra 32($sp)
 		sw	$s7 28($sp)
 		sw	$s6 24($sp)
@@ -97,7 +109,157 @@
 		move $s1 $a1
 		move $s3 $sp
 
+		la $s7 program_buffer
 
+	###################### REEMPLAZAMOS INSTRUCCIONES MAL POR TAL #######################################
+	asm_pseudo_loop:
+		li	$s4 ' '
+		li 	$s5 '\n'
+		li	$s6 '\t'
+		lb	$t0 0($s0)			#primer caracter
+		sb   $t0 0($s7)
+		addi	$s0 $s0 1				#direccion del caracter siguiente
+		addi $s7 $s7 1
+		beq	$t0 $0  asm_pseudo_loop_exit		#fin del codigo?
+		beq 	$t0 $s4 asm_pseudo_loop	#espacio en blanco
+		beq 	$t0 $s5 asm_pseudo_loop	#newline
+		beq	$t0 $s6 asm_pseudo_loop	#tab
+		beq	$t0 'a' asm_get_pseudo_a		#obtener instrucciones que empiezan con a
+		j asm_iterate_and_copy_line
+
+	asm_get_pseudo_a:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+
+		move	$a0 $s0		#verificamos si la instruccion es abs
+		la 	$a1 str_abs
+		jal 	strcmp
+		bne 	$v0 $0 asm_pseudo_abs
+
+		j asm_iterate_and_copy_line
+
+	asm_pseudo_abs:
+		jal extract_regs_and_value
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '3'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'x'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'b'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		j asm_pseudo_loop
+
+	asm_iterate_and_copy_line:				
+		li 	$s4 '\n'						#recorremos toda la linea hasta encontrar un new line
+		lb	$t0 0($s0)					#primer caracter
+		sb   $t0 0($s7)
+		addi	$s0 $s0 1						#direccion del caracter siguiente
+		addi $s7 $s7 1
+		beq	$t0 $0  asm_pseudo_loop_exit		#fin del codigo?
+		beq 	$t0 $s5 asm_pseudo_loop			#newline
+		j asm_iterate_and_copy_line
+
+
+	asm_pseudo_loop_exit:
+		sb $0 0($s7)
+		j asm_exit ########################## quitar esta linea
+		lw	$s0 36($sp)	#regresamos s0 al puntero inicial dle programa
+
+	########################## CODIFICAMOS INSTRUCCIONES ###############################################
 	asm_text_loop:
 		li	$s4 ' '
 		li 	$s5 '\n'
@@ -140,17 +302,12 @@
 		la	$a1 str_text
 		jal	strcmp
 		bnez $v0 asm_text
-		
+
 		li	$a0 0
 		j asm_error	
 
 	asm_get_a:
 		addi	$s0 $s0 -1 	#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
-
-		#move	$a0 $s0		#verificamos si la instruccion es abs
-		#la 	$a1 str_abs
-		#jal 	strcmp
-		#bne 	$v0 $0 asm_abs
 
 		move	$a0 $s0
 		la	$a1 str_add
@@ -324,7 +481,7 @@
 		jal	strcmp
 		li 	$s7 0x18
 		bnez $v0 asm_r_type
-		
+
 		li	$a0 0
 		j asm_error
 
@@ -352,7 +509,7 @@
 		jal	strcmp
 		li 	$s7 0x0d
 		bnez $v0 asm_i_type
-		
+
 		li	$a0 0
 		j asm_error
 
@@ -455,7 +612,7 @@
 		la 	$a1 str_syscall
 		jal 	strcmp
 		bne 	$v0 $0 asm_syscall
-		
+
 		li	$a0 0
 		j asm_error
 
@@ -466,19 +623,19 @@
 		asm_text:
 			j exit
 		asm_r_type:			#codifica instrucciones tipo r, 
-			
+
 			addi	$s0 $s0 1	#eliminar espacio
 			jal 	asm_regs	#n?mero de registro rd
 			add	$s4 $0 $v0	#ponemos rd en s4 con todo lo dem?s en 0
 			sll	$s4 $s4 11	#corremos rd 11 bits (shamt + func)
 			or	$s7 $s7 $s4	#apendar rd y funct
-			
+
 			addi	$s0 $s0 1	#eliminar espacio
 			jal	asm_regs	#n?mero de registro rs
 			add	$s4 $0 $v0	#ponemos rs en s4 con lo dem?s en 0
 			sll	$s4 $s4 21	#corremos rs 21 bits (shamt + func + rt + rd)
 			or	$s7 $s7 $s4	#apendar funct
-			
+
 			lw	$s4 asm_flag	#bandera que indica si necesitamos tomar en cuenta corrimiento
 			beqz	$s4 no_shamt
 			addi	$s0 $s0 1	#eliminar espacio
@@ -536,8 +693,8 @@
 		beq	$a0 $t0 error_code_0    #TO DO: función para imprimir instrucción desconocida
 		li	$t0 1
 		j 	error_unknown  
-		
-					
+
+
 	error_code_0:
 		la	$a0 err_0
 		syscall 
@@ -545,10 +702,11 @@
 	error_unknown:
 		la	$a0 err_unknown
 		syscall 			
-		
+
 	asm_exit:					#resettear el backup
-		lw	$a2 40($sp)
-		lw	$a1 36($sp)
+		lw   $a2 44($sp)
+		lw	$a1 40($sp)
+		lw	$a0 36($sp)
 		lw	$ra 32($sp)
 		lw	$s7 28($sp)
 		lw	$s6 24($sp)
@@ -563,6 +721,102 @@
 		jr 	$ra
 
 
+	############# extract_regs_and_value #############
+	extract_regs_and_value:
+		la $t1 reg1
+		la $t2 reg2
+		la $t3 value
+		li $t4 ' '
+		li $t5 '\n'
+
+	extract_reg1_loop:
+		addi	$s0 $s0 1
+		lb 	$t0 0($s0)
+		beq 	$t0 $t4 extract_reg1_loop_end
+		beq	$t0 $t5 extract_regs_and_value_end
+		beqz $t0 extract_regs_and_value_end
+		sb 	$t0 0($t1)
+		addi	$t1 $t1 1
+		j extract_reg1_loop
+
+	extract_reg1_loop_end:
+		addi $s0 $s0 1
+		lb $t0 0($s0)
+		subi $s0 $s0 1
+		bne $t0 '$' extract_value_loop  #comprobamos que lo siguiente que recibimos es un registro si no es un branch
+
+	extract_reg2_loop:
+		addi	$s0 $s0 1
+		lb	$t0 0($s0)
+		beq	$t0 $t4 extract_value_loop
+		beq	$t0 $t5 extract_regs_and_value_end
+		beqz $t0 extract_regs_and_value_end
+		sb	$t0 0($t2)
+		addi	$t2 $t2 1
+		j extract_reg2_loop
+
+	extract_value_loop:
+		addi	$s0 $s0 1
+		lb	$t0 0($s0)
+		beq	$t0 $t4 extract_value_loop
+		beq	$t0 $t5 extract_regs_and_value_end
+		beqz $t0 extract_regs_and_value_end
+		sb	$t0 0($t3)
+		addi	$t3 $t3 1
+		j extract_value_loop
+
+
+	extract_regs_and_value_end:
+		sb $0 0($t1)
+		sb $0 0($t2)
+		sb $0 0($t3)
+		jr $ra
+
+ 	############# copy_reg1 ####################
+ 	copy_reg1:
+ 		la	$t0 reg1
+ 	
+ 	copy_reg1_loop:
+ 		lb 	$t1 0($t0)
+ 		beqz	$t1 copy_reg1_exit
+ 		sb	$t1 0($s7)
+ 		addi	$t0 $t0 1
+ 		addi $s7 $s7 1
+ 		j copy_reg1_loop
+ 			
+ 	copy_reg1_exit:
+ 		jr $ra
+ 	
+ 	############# copy_reg2 ####################
+ 	copy_reg2:
+ 		la	$t0 reg2
+ 	
+ 	copy_reg2_loop:
+ 		lb 	$t1 0($t0)
+ 		beqz	$t1 copy_reg2_exit
+ 		sb 	$t1 0($s7)
+ 		addi	$t0 $t0 1
+ 		addi	$s7 $s7 1
+ 		j copy_reg2_loop
+ 			
+ 	copy_reg2_exit:
+ 		jr $ra
+
+ 	############# copy_value ####################
+ 	copy_value:
+ 		la	$t0 value
+ 	
+ 	copy_value_loop:
+ 		lb 	$t1 0($t0)
+ 		beqz	$t1 copy_value_exit
+ 		sb 	$t1 0($s7)
+ 		addi	$t0 $t0 1
+ 		addi	$s7 $s7 1
+ 		j copy_value_loop
+ 			
+ 	copy_value_exit:
+ 		jr $ra
+ 	
      ############# asm_regs ####################
 
 	asm_regs:					# pasa de $AN -> N ej. $s0 -> 16
@@ -571,9 +825,9 @@
 		li 	$t7 '$'			# voy a utilizarlo para verificar que viene un registro
 		li	$t6 'a'			# aX -> argumentos
 		li	$t5 'v'			# vX -> valores de retorno
-		li 	$t4 't'
-		li 	$t3 's'
-		li   $t2 'r'
+		li 	$t4 't'             # tx -> valores temporales
+		li 	$t3 's'             # sx -> valores seguros
+		li   $t2 'r'             # ra
 		li	$t1 '0'			# cero
 
 
@@ -593,34 +847,41 @@
 	asm_regs_zero:		# caso trivial 
 		li	$v0 0
 		j	asm_regs_exit
-		
+
 	asm_regs_vx:
 		jal	ascii_to_int
 		addi	$v0 $v0 2
 		j	asm_regs_exit
 
 	asm_regs_ax:		# le pongo de base $a0 y sumo su offset
+		lb 	$t0 0($s0)
+		beq 	$t0 't' asm_regs_at	
 		jal	ascii_to_int	# ($a0 = 4) => ($a3 - $a0) + 4 = 7
 		addi	$v0 $v0 4
 		j asm_regs_exit
-	
+
 	asm_regs_tx:
 		jal	ascii_to_int
 		addi	$v0 $v0 8
 		j	asm_regs_exit
-		
+
 	asm_regs_sx:
 		lb 	$t0 0($s0)
 		beq 	$t0 'p' asm_regs_sp	 	#si es un sp devolvemos 29
 		jal	ascii_to_int
 		addi	$v0 $v0 16
 		j	asm_regs_exit
-	
+
 	asm_regs_sp:
 		addi $s0 $s0 1			# advance the char pointer
 		li	$v0 29
 		j	asm_regs_exit
-	
+
+	asm_regs_at:
+		addi $s0 $s0 1			# advance the char pointer
+		li	$v0 1
+		j	asm_regs_exit
+
 	asm_regs_ra:
 		lb 	$t0 0($s0)
 		bne 	$t0 'a' asm_regs_error 	#si no es ra devolvemos error
@@ -636,7 +897,6 @@
 	asm_regs_error:
 		addi	$sp $sp 4
 		j	asm_error
-
      
      
      ######### asm_syscall #####################
