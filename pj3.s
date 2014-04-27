@@ -1,6 +1,6 @@
 .data
 	##############PROGRAMA A CODIFICAR################
-	programa: .asciiz "addi $t0 $0 20\nmul $t2 $s3 $t0\nneg $t1 $t0\nmove $t0 $t8"
+	programa: .asciiz "la $t0 8($t1)\nmul $t2 $s3 $t0\nseq $t1 $t0 $t3\n"
 
 	##################################################
 
@@ -84,10 +84,11 @@
 		reg1:		 .space 30
 		reg2:		 .space 30
 		value:		 .space 30
+		aux_string:	 .space 30
 		asm_flag:		 .word 0
-	#códigos de error:
+	#c?digos de error:
 		err_unknown:	.asciiz "error desconocido \n"
-		err_0:		.asciiz "instrucción inválida \n"
+		err_0:		.asciiz "instrucci?n inv?lida \n"
 	.text	
 		#backup a la memoria
 		addi	$sp $sp -48
@@ -125,10 +126,12 @@
 		beq 	$t0 $s5 asm_pseudo_loop	#newline
 		beq	$t0 $s6 asm_pseudo_loop	#tab
 		beq	$t0 'a' asm_get_pseudo_a		#obtener instrucciones que empiezan con a
-		beq  $t0 'b' asm_get_pseudo_b
+		beq  	$t0 'b' asm_get_pseudo_b
+		beq  	$t0 'l' asm_get_pseudo_l
 		beq	$t0 'm' asm_get_pseudo_m
 		beq	$t0 'n' asm_get_pseudo_n
 		beq	$t0 'r' asm_get_pseudo_r
+		beq	$t0 's' asm_get_pseudo_s
 		j asm_iterate_and_copy_line
 	
 	asm_get_pseudo_a:
@@ -157,6 +160,19 @@
 		bnez $v0 asm_pseudo_blt
 
 		j asm_iterate_and_copy_line
+	asm_get_pseudo_l:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+		
+		move	$a0 $s0
+		la	$a1 str_li
+		jal	strcmp
+		bnez $v0 asm_pseudo_li
+		
+		move	$a0 $s0
+		la	$a1 str_la
+		jal	strcmp
+		bnez $v0 asm_pseudo_la
 	
 	asm_get_pseudo_m:
 		addi	$s0 $s0 -1 
@@ -191,7 +207,19 @@
 		addi $s7 $s7 -1
 				
 		j asm_iterate_and_copy_line
-	
+	asm_get_pseudo_s:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+		
+		move	$a0 $s0	
+		la	$a1 str_seq
+		jal	strcmp
+		bnez	$v0 asm_pseudo_seq
+		move	$a0 $s0	
+		la	$a1 str_sne
+		jal	strcmp
+		bnez	$v0 asm_pseudo_sne
+		j asm_iterate_and_copy_line
 	asm_pseudo_abs:
 		jal extract_regs_and_value
 		li $t0 's'
@@ -296,7 +324,6 @@
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		j asm_pseudo_loop
-		
 		
 	asm_pseudo_bgt:
 		jal extract_regs_and_value
@@ -489,7 +516,226 @@
 		addi $s7 $s7 1
 		jal copy_value
 		j asm_pseudo_loop
-		
+	asm_pseudo_li:
+		jal extract_regs_and_value
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		j asm_pseudo_loop
+	asm_pseudo_la:
+		jal extract_regs_and_value
+		lb $t0 reg2
+		beq $t0 '(' la_using_parenthesis
+		la $a0 reg2
+		li $a1 '('
+		jal string_contains_char
+		bnez  $v0 la_using_parenthesis_offset
+		la $a0 reg2
+		jal string_is_number
+		beqz $v0 la_using_label
+		#numero
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		j asm_pseudo_loop
+	la_using_parenthesis:
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		lb  $t0 reg2+1
+		sb  $t0 0($s7)
+		addi $s7 $s7 1
+		lb  $t0 reg2+2
+		sb  $t0 0($s7)
+		addi $s7 $s7 1
+		lb  $t0 reg2+3
+		sb  $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		j asm_pseudo_loop
+	la_using_parenthesis_offset:
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		la $a0 reg2
+		jal ascii_to_int_generic
+		move $a0 $v0
+		jal int_to_ascii
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_extract_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		j asm_pseudo_loop
+	la_using_label:
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		j asm_pseudo_loop
 	asm_pseudo_move:
 		jal extract_regs_and_value
 		li $t0 'a'
@@ -595,7 +841,285 @@
 		addi $s7 $s7 1
 		jal copy_reg2
 		j asm_pseudo_loop
-
+	asm_pseudo_seq:
+		jal extract_regs_and_value
+		lb $t0 value
+		beq $t0 '$' seq_using_register
+	seq_using_immed:
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+	seq_using_register:	
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'b'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		lb $t0 value
+		beq $t0 '$' seq_common_reg
+	seq_common_immed:
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		j seq_common
+	seq_common_reg:
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+	seq_common:
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		j asm_pseudo_loop
+	asm_pseudo_sne:
+		jal extract_regs_and_value
+		lb $t0 value
+		beq $t0 '$' sne_using_register
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+	sne_using_register:
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'b'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		lb $t0 value
+		beq $t0 '$' sne_common_using_register
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		j sne_common
+	sne_common_using_register:
+		jal copy_value
+		j sne_common
+	sne_common:
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		j asm_pseudo_loop
 	asm_iterate_and_copy_line:				
 		li 	$s4 '\n'						#recorremos toda la linea hasta encontrar un new line
 		lb	$t0 0($s0)					#primer caracter
@@ -997,14 +1521,11 @@
 		addi	$s0 $s0 -1 		#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
 
 		j asm_error			# :(
-
-
-
 	asm_error:
 		addi	$s0 $s0 -1 		#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
 		li	$v0 4
 		li	$t0 0
-		beq	$a0 $t0 error_code_0    #TO DO: función para imprimir instrucción desconocida
+		beq	$a0 $t0 error_code_0    #TO DO: funci?n para imprimir instrucci?n desconocida
 		li	$t0 1
 		j 	error_unknown  
 		
@@ -1262,3 +1783,141 @@
 	strcmp_false:
 		li	$v0 0
 		jr 	$ra
+		
+	string_contains_char:
+		li	$t3 '\n'
+		li	$t4 '\t'
+	string_contains_char_loop:
+		lb 	$t0 0($a0)
+		move	$t1 $a1
+		beq 	$t0 $t3 str_contains_char_false		
+		beq 	$t0 $t4 str_contains_char_false		
+		beq 	$t0 $0 str_contains_char_false 
+		beq	$t0 $t1 str_contains_char_true
+		addi $a0 $a0 1
+		j	string_contains_char_loop
+	str_contains_char_true:
+		li 	$v0 1
+		jr	$ra
+	str_contains_char_false:
+		li	$v0 0
+		jr 	$ra
+	string_is_number:
+		li	$t3 '\n'
+	string_is_number_loop:
+		lb 	$t0 0($a0)
+		beq 	$t0 $t3 str_contains_char_true
+		beq 	$t0 $0 str_contains_char_true
+		li	$t1 '0'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '1'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '2'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '3'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '4'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '5'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '6'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '7'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '8'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '9'
+		beq	$t1 $t0 continue_is_number
+		j	str_contains_char_false
+	continue_is_number:
+		addi 	$a0 $a0 1
+		j 	string_is_number_loop
+	######## ascii_to_int_generic ####################
+     ascii_to_int_generic:     # the infamous atoi, with no validations!
+      	move $t5 $a0
+      	li 	$t1 0		# init with zero
+      	li 	$t2 '0'	
+      	li 	$t3 '9'	
+      	li 	$t4 10
+     	li 	$v0 0
+
+     ascii_to_int_generic_loop:
+		lb 	$t0 0($t5)
+		beq 	$t0 $0  ascii_to_int_generic_exit
+		blt 	$t0 $t2 ascii_to_int_generic_exit	# only accept numbers
+		bgt 	$t0 $t3 ascii_to_int_generic_exit	# only accept numbers
+		addi $t5 $t5 1			# advance the char pointer
+		addi $t0 $t0 -48		# get real number (without the '0' offset)
+		mul  $v0 $v0 $t4		# multiply by 10
+		add  $v0 $v0 $t0		# add real number
+		j 	ascii_to_int_generic_loop
+
+   	ascii_to_int_generic_exit:
+		jr 	$ra
+	######### int_to_ascii ####################
+	
+	int_to_ascii:
+		move	$t4 $a0
+		beqz	$t4 signed_is_zero
+		add	$t5 $0 $0 #inicializamos nuestro contador a 0
+		addi	$t6 $0 10 #asignamos a t6 la base 10
+		bgtz	$t4 signed_not_negative
+		addi	$t7 $0 '-'
+		sb	$t7 0($s7) #guardamos el signo negativo en el resultado y corremos 1
+		addi	$s7 $s7 1 
+	
+	signed_not_negative:
+		abs	$t4 $t4 #sacamos el valor absoluto del numero
+	
+	whileSigned:
+		beqz	$t4 endSigned
+		div	$t4 $t6
+		mflo	$t4
+		mfhi	$t7 #guardamos el residuo en $t6
+		addi	$sp $sp -1 #pedimos 1 en el stack para guardar el ascii del residuo
+		addi	$t5 $t5 1 #sumamos 1 al contador para saber cuanto hemos corrido el stack
+		addi	$t7 $t7 48 #sumamos 48 al residuo para convertirlo a ascii
+		sb	$t7 0($sp)
+		j	whileSigned
+	
+	endSigned:
+						
+	whileSignedChars:
+		beqz	$t5 endSignedChars
+		lb	$t7 0($sp) #cargamos el digito mas alto del numero
+		sb	$t7 0($s7)
+		addi	$sp $sp 1 #regresamos el $sp 1 posicion
+		addi	$t5 $t5 -1 #restamos 1 al contador
+		addi	$s7 $s7 1
+		j whileSignedChars
+	
+	endSignedChars:
+		j end_s_zero
+						
+	signed_is_zero: #si el numero es 0 solo agregamos el 0 a la respuesta
+		addi	$t7 $0 48
+		sb	$t7 0($s7)
+	
+	end_s_zero:
+		jr $ra
+	copy_extract_reg2:
+ 		la	$t0 reg2
+ 		li	$t2 0 		#flag
+ 		li	$t3 '$'
+ 		li      $t4 ')'
+ 	copy_extract_reg2_loop:
+ 		lb 	$t1 0($t0)
+ 		addi	$t0 $t0 1
+ 		beqz	$t1 copy_extract_reg2_exit
+ 		beq	$t1 $t4 copy_extract_reg2_exit
+ 		beq	$t1 $t3 do_copy
+ 		bnez	$t2 do_copy
+ 		j	copy_extract_reg2_loop
+ 	do_copy:
+ 		li 	$t2 1
+ 		sb 	$t1 0($s7)
+ 		addi	$s7 $s7 1
+ 		j copy_extract_reg2_loop
+ 			
+ 	copy_extract_reg2_exit:
+ 		jr $ra
