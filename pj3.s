@@ -1,6 +1,6 @@
 .data
 	##############PROGRAMA A CODIFICAR################
-	programa: .asciiz "addi $t0 $0 20\nmul $t2 $s3 $t0\nneg $t1 $t0\nmove $t0 $t8"
+	programa: .asciiz ".data\n mierda: .asciiz 'shit'\n popo: asciizmain:\n.text\ndiv $t0 $t1\nmflo $t2\nlabel:\n###############mierda#########\nmove $t0 $t0\nabs $t1 $t2\n.data\n.asciiz 'mierdesima'\npopo: .asciizc 'shit'"
 
 	##################################################
 
@@ -15,11 +15,17 @@
 		la	$a2 data
 		jal	ensamblador	
 		
-		la $a0 program_buffer
-		li $v0 4
-        	syscall
-
+		#la $a0 program_buffer
+		#li $v0 4
+        	#syscall
+		
+		#la $t0 data_counter
+		#lw $a0 0($t0)
+		#li $v0 1
+		#syscall
+		
 		#jr	$v0
+		
 		j	exit
 
 
@@ -80,13 +86,14 @@
 		str_sw:		.asciiz	"sw"
 		str_syscall:	.asciiz	"syscall"
 	#flags and variables
-		program_buffer: .space 400
+		program_buffer: .space 600
 		reg1:		 .space 30
 		reg2:		 .space 30
 		value:		 .space 30
 		asm_flag:		 .word 0
-		text_counter 	 .word 400000
-		data_counter    .word 
+		text_counter: 	 .word 39996
+		data_counter:   .word -4
+		row:			 .word 0
 	#códigos de error:
 		err_unknown:	.asciiz "error desconocido \n"
 		err_0:		.asciiz "instrucción inválida \n"
@@ -114,7 +121,7 @@
 		move $s0 $a0
 		move $s1 $a1
 		move $s3 $sp
-		
+		li $s6 0
 		la $s7 program_buffer
 
 	###################### REEMPLAZAMOS INSTRUCCIONES MAL POR TAL #######################################
@@ -130,10 +137,87 @@
 		beq 	$t0 $s5 asm_pseudo_loop	#newline
 		beq	$t0 'a' asm_get_pseudo_a		#obtener instrucciones que empiezan con a
 		beq  $t0 'b' asm_get_pseudo_b
+		beq  $t0 'd' asm_get_pseudo_d
+		beq 	$t0 'l' asm_get_pseudo_l
 		beq	$t0 'm' asm_get_pseudo_m
 		beq	$t0 'n' asm_get_pseudo_n
 		beq	$t0 'r' asm_get_pseudo_r
-		j asm_iterate_and_copy_line
+		beq	$t0 's' asm_get_pseudo_s
+		beq  $t0 '.' asm_get_segment
+		beq  $t0 '#' asm_remove_text_comment
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+		j asm_check_label
+		
+	asm_pseudo_data_loop:
+		li	$s4 ' '
+		li 	$s5 '\n'
+		lb	$t0 0($s0)			#primer caracter
+		sb   $t0 0($s7)
+		addi	$s0 $s0 1				#direccion del caracter siguiente
+		addi $s7 $s7 1
+		beq	$t0 $0  asm_pseudo_loop_exit		#fin del codigo?
+		beq 	$t0 $s4 asm_pseudo_data_loop	#espacio en blanco
+		beq 	$t0 $s5 asm_pseudo_data_loop	#newline
+		beq  $t0 '.' asm_get_data_segment
+		beq  $t0 '#' asm_remove_data_comment
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+		j asm_check_data_label
+	
+	asm_remove_text_comment:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+		
+	asm_remove_text_comment_loop:
+		lb $t0 0($s0)
+		addi $s0 $s0 1
+		bne $t0 '\n' asm_remove_text_comment_loop
+		addi $s0 $s0 -1
+		j asm_pseudo_loop
+		
+	asm_remove_data_comment:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+		
+	asm_remove_data_comment_loop:
+		lb $t0 0($s0)
+		addi $s0 $s0 1
+		bne $t0 '\n' asm_remove_data_comment_loop
+		addi $s0 $s0 -1
+		j asm_pseudo_data_loop
+		
+	asm_get_segment:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+		
+		move $a0 $s0			# verifico si es la directiva .data
+		la $a1 str_data
+		jal strcmp
+		bne $v0 $0 asm_pseudo_data
+	
+		move $a0 $s0			# verifico si es la directiva .text
+		la $a1 str_text
+		jal strcmp
+		bne $v0 $0 asm_pseudo_text
+		
+		j asm_check_label
+	
+	asm_get_data_segment:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+		
+		move $a0 $s0			# verifico si es la directiva .data
+		la $a1 str_data
+		jal strcmp
+		bne $v0 $0 asm_pseudo_data
+	
+		move $a0 $s0			# verifico si es la directiva .text
+		la $a1 str_text
+		jal strcmp
+		bne $v0 $0 asm_pseudo_text
+		
+		j asm_check_data_label
 	
 	asm_get_pseudo_a:
 		addi	$s0 $s0 -1 
@@ -144,7 +228,7 @@
 		jal 	strcmp
 		bne 	$v0 $0 asm_pseudo_abs
 		
-		j asm_iterate_and_copy_line
+		j asm_check_label
 	
 	asm_get_pseudo_b:
 		addi	$s0 $s0 -1 
@@ -160,7 +244,34 @@
 		jal	strcmp
 		bnez $v0 asm_pseudo_blt
 
-		j asm_iterate_and_copy_line
+		j asm_check_label
+	
+	asm_get_pseudo_d:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+		
+		move	$a0 $s0
+		la	$a1 str_div
+		jal	strcmp
+		bnez $v0 asm_pseudo_div
+
+		j asm_check_label
+		
+	asm_get_pseudo_l:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+
+		move	$a0 $s0
+		la	$a1 str_li
+		jal	strcmp
+		bnez $v0 asm_pseudo_li
+
+		move	$a0 $s0
+		la	$a1 str_la
+		jal	strcmp
+		bnez $v0 asm_pseudo_la
+		
+		j asm_check_label
 	
 	asm_get_pseudo_m:
 		addi	$s0 $s0 -1 
@@ -176,7 +287,7 @@
 		jal	strcmp
 		bnez $v0 asm_pseudo_mul
 		
-		j asm_iterate_and_copy_line
+		j asm_check_label
 		
 		
 	asm_get_pseudo_n:
@@ -188,7 +299,7 @@
 		jal	strcmp
 		bnez	$v0 asm_pseudo_neg
 				
-		j asm_iterate_and_copy_line
+		j asm_check_label
 		
 	asm_get_pseudo_r:
 		addi	$s0 $s0 -1 
@@ -204,8 +315,23 @@
 		jal	strcmp
 		bnez $v0 asm_pseudo_ror
 				
-		j asm_iterate_and_copy_line
+		j asm_check_label
 	
+	asm_get_pseudo_s:
+		addi	$s0 $s0 -1 
+		addi $s7 $s7 -1
+
+		move	$a0 $s0	
+		la	$a1 str_seq
+		jal	strcmp
+		bnez	$v0 asm_pseudo_seq
+		
+		move	$a0 $s0	
+		la	$a1 str_sne
+		jal	strcmp
+		bnez	$v0 asm_pseudo_sn
+		j asm_check_label
+		
 	asm_pseudo_abs:
 		jal extract_regs_and_value
 		li $t0 's'
@@ -309,6 +435,12 @@
 		li $t0 't'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 12
+		sw $t1 0($t0)
 		j asm_pseudo_loop
 		
 		
@@ -428,6 +560,13 @@
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		jal copy_value
+		
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 12
+		sw $t1 0($t0)
 		j asm_pseudo_loop
 		
 	
@@ -502,6 +641,480 @@
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		jal copy_value
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 8
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	asm_pseudo_div:
+		jal extract_regs_and_value
+		la $t0 value
+		lb $t1 0($t0)
+		
+		beqz $t1 asm_div_tal 			#si solo tiene 2 registros es tal
+		bne $t1 '$' asm_pseudo_div_im		#si no empieza con $ el tercer registro es inmediato
+		
+		li $t0 'b'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'e'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'b'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'e'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'k'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'v'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'm'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'f'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 16
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	asm_pseudo_div_im:
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'v'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'm'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'f'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 12
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	asm_div_tal:
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'v'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 4
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	asm_pseudo_li:
+		jal extract_regs_and_value
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 4
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	asm_pseudo_la:
+		jal extract_regs_and_value
+		lb $t0 reg2
+		beq $t0 '(' la_using_parenthesis
+		la $a0 reg2
+		li $a1 '('
+		jal string_contains_char
+		bnez  $v0 la_using_parenthesis_offset
+		la $a0 reg2
+		jal string_is_number
+		beqz $v0 la_using_label
+		#numero
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 12
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	la_using_parenthesis:
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		lb  $t0 reg2+1
+		sb  $t0 0($s7)
+		addi $s7 $s7 1
+		lb  $t0 reg2+2
+		sb  $t0 0($s7)
+		addi $s7 $s7 1
+		lb  $t0 reg2+3
+		sb  $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 4
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	la_using_parenthesis_offset:
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		la $a0 reg2
+		jal ascii_to_int_generic
+		move $a0 $v0
+		jal int_to_ascii
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_extract_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 8
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	la_using_label:
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
 		j asm_pseudo_loop
 		
 	asm_pseudo_move:
@@ -535,6 +1148,13 @@
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		jal copy_reg2
+		
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 4
+		sw $t1 0($t0)
 		j asm_pseudo_loop
 		
 	asm_pseudo_mul:
@@ -578,6 +1198,12 @@
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		jal copy_reg1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 12
+		sw $t1 0($t0)
 		j asm_pseudo_loop
 		
 	asm_pseudo_neg:
@@ -608,32 +1234,964 @@
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		jal copy_reg2
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 4
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	asm_pseudo_seq:
+		jal extract_regs_and_value
+		lb $t0 value
+		beq $t0 '$' seq_using_register
+	seq_using_immed:
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 4
+		sw $t1 0($t0)
+		
+	seq_using_register:	
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'b'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		lb $t0 value
+		beq $t0 '$' seq_common_reg
+	seq_common_immed:
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		j seq_common
+	seq_common_reg:
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+	seq_common:
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '1'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 12
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	asm_pseudo_sne:
+		jal extract_regs_and_value
+		lb $t0 value
+		beq $t0 '$' sne_using_register
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'd'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 4
+		sw $t1 0($t0)
+
+	sne_using_register:
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'b'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		lb $t0 value
+		beq $t0 '$' sne_common_using_register
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		j sne_common
+	sne_common_using_register:
+		jal copy_value
+		j sne_common
+	sne_common:
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 8
+		sw $t1 0($t0)
 		j asm_pseudo_loop
 		
 	asm_pseudo_rol:
 		jal extract_regs_and_value
+		la $t0 value
+		lb $t1 0($t0)
 		
+		bne $t1 '$' asm_pseudo_rol_im
+		#si value empieza con $ quiere decir que tiene 3 registros 
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'b'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1		
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'v'
+		sb $t0 0($s7)
+		addi $s7 $s7 1		
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1		
+		li $t0 'v'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 16
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	asm_pseudo_rol_im:
+		la $a0 value
+		jal ascii_to_int_generic
+		add $t1 $0 $v0  #obtenemos el decimal del string
+		li $t2 32
+		sub $t3 $t2 $t1
+		
+		#copiamos las instrucciones
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		add $a0 $0 $t3		
+		jal int_to_ascii
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 12
+		sw $t1 0($t0)
 		j asm_pseudo_loop
 		
 	asm_pseudo_ror:
 		jal extract_regs_and_value
+		la $t0 value
+		lb $t1 0($t0)
+		
+		bne $t1 '$' asm_pseudo_ror_im
+		#si value empieza con $ quiere decir que tiene 3 registros 
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'b'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'u'
+		sb $t0 0($s7)
+		addi $s7 $s7 1		
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '0'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'v'
+		sb $t0 0($s7)
+		addi $s7 $s7 1		
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1		
+		li $t0 'v'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 16
+		sw $t1 0($t0)
 		j asm_pseudo_loop
+		
+	asm_pseudo_ror_im:
+		la $a0 value
+		jal ascii_to_int_generic
+		add $t1 $0 $v0  #obtenemos el decimal del string
+		li $t2 32
+		sub $t3 $t2 $t1
+		
+		#copiamos las instrucciones
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		add $a0 $0 $t3		
+		jal int_to_ascii
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 's'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'l'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg2
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_value
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		jal copy_reg1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 12
+		sw $t1 0($t0)
+		j asm_pseudo_loop
+		
+	asm_pseudo_text:
+		addi $s0 $s0 -5
+		j asm_iterate_and_copy_line
+	
+	asm_pseudo_data:
+		addi $s0 $s0 -5
+		j asm_iterate_and_copy_data_line
+	
+	asm_check_label:
+		move $a0 $s0			# verifico si es un label
+		jal 	asm_label_check
+		bne 	$v0 $0 asm_label
+		
+		#incrementamos el contador de las direcciones 
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 4
+		sw $t1 0($t0)
+		j asm_iterate_and_copy_line
+		
+	asm_check_data_label:
+		move $a0 $s0			# verifico si es un label
+		jal 	asm_label_check
+		bne 	$v0 $0 asm_data_label
+
+		j asm_increment_data_counter
+	
+	########### copiamos label de text a tabla de simbolos #######################
+	asm_label:
+		li $s4 ':'
+		li $s5 '\n'
+		la $t0 text_counter #cargamos el contador de direcciones
+		lw $t1 0($t0) 
+		la $t6 row
+		addi $t1 $t1 4 #le sumamos 4 al contador de direcciones de text
+		lw $t2 0($t6)
+		addi $sp $sp -1 
+		addi $s6 $s6 1
+		
+		#direcciones de la matriz
+		la $t3 symbol_table
+		mul $t4 $t2 2 #multiplicamos cantidad de columnas por la fila actual
+		add $t4 $t4 $0 #sumamos la columna de la cual queremos saber la direccion, en este caso es la columna 0
+		mul $t4 $t4 4 #multiplicamos el size
+		add $t4 $t3 $t4
+		sw $t1 0($t4) #guardamos el contador actual
+		addi $t4 $t4 4 #nos movemos a la siguiente celda
+		la $t5 0($sp)
+		sw $t5 0($t4) #guardamos la direccion actual del puntero
+	
+		addi $t2 $t2 1 #le sumamos 1 a las filas
+		sw $t2 0($t6) #guardamos la fila actual
+		
+	asm_pseudo_label_loop:
+		lb $t0 0($s0)			# se utiliza para llenar la tabla de simbolos
+		sb $t0 0($sp)
+		addi $s0 $s0 1
+		addi $sp $sp -1
+		addi $s6 $s6 1
+		bne $t0 $s4 asm_pseudo_label_loop		
+		addi $sp $sp 1
+		addi $s6 $s6 -1
+		sb $0 0($sp)
+	
+	asm_label_nl_loop: #recorremos hasta encontrar un \n
+		lb $t0 0($s0)
+		addi $s0 $s0 1
+		bne $t0 $s5 asm_label_nl_loop
+		j asm_pseudo_loop
+		
+	########### copiamos label de data a tabla de simbolos #######################
+	asm_data_label:
+		li $s4 ':'
+		li $s5 '\n'
+		la $t0 data_counter #cargamos el contador de direcciones
+		lw $t1 0($t0) 
+		la $t6 row
+		lw $t2 0($t6)
+		addi $t1 $t1 4 #le sumamos 4 al contador de direcciones de data
+		addi $sp $sp -1 
+		addi $s6 $s6 1
+		
+		#direcciones de la matriz
+		la $t3 symbol_table
+		mul $t4 $t2 2 #multiplicamos cantidad de columnas por la fila actual
+		add $t4 $t4 $0 #sumamos la columna de la cual queremos saber la direccion, en este caso es la columna 0
+		mul $t4 $t4 4 #multiplicamos el size
+		add $t4 $t3 $t4
+		sw $t1 0($t4) #guardamos el contador actual
+		addi $t4 $t4 4 #nos movemos a la siguiente celda
+		la $t5 0($sp)
+		sw $t5 0($t4) #guardamos la direccion actual del puntero
+		
+		addi $t2 $t2 1 #le sumamos 1 a las filas
+		sw $t2 0($t6) #guardamos la fila actual
+	asm_pseudo_data_label_loop:
+		lb $t0 0($s0)			# se utiliza para llenar la tabla de simbolos
+		sb $t0 0($sp)
+		addi $s0 $s0 1
+		addi $sp $sp -1
+		addi $s6 $s6 1
+		bne $t0 $s4 asm_pseudo_data_label_loop		
+		addi $sp $sp 1
+		addi $s6 $s6 -1
+		sb $0 0($sp)
+		addi $s0 $s0 1 #eliminamos el espacio
+		j asm_increment_data_counter
 
 	asm_iterate_and_copy_line:				
-		li 	$s4 '\n'						#recorremos toda la linea hasta encontrar un new line
+		li 	$s4 '#'						#recorremos toda la linea hasta encontrar un new line
+		li 	$s5  '\n'
 		lb	$t0 0($s0)					#primer caracter
 		sb   $t0 0($s7)
 		addi	$s0 $s0 1						#direccion del caracter siguiente
 		addi $s7 $s7 1
 		beq	$t0 $0  asm_pseudo_loop_exit		#fin del codigo?
+		beq 	$t0 $s4 asm_remove_text_comment
 		beq 	$t0 $s5 asm_pseudo_loop			#newline
 		j asm_iterate_and_copy_line
-		
+	
+	asm_increment_data_counter:
+		#incrementamos el contador de las direcciones 
+		la $t0 data_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 4
+		sw $t1 0($t0)
+	
+	asm_iterate_and_copy_data_line:				
+		li 	$s4 '#'						#recorremos toda la linea hasta encontrar un new line
+		li 	$s5  '\n'
+		lb	$t0 0($s0)					#primer caracter
+		sb   $t0 0($s7)
+		addi	$s0 $s0 1						#direccion del caracter siguiente
+		addi $s7 $s7 1
+		beq	$t0 $0  asm_pseudo_loop_exit		#fin del codigo?
+		beq 	$t0 $s4 asm_remove_data_comment
+		beq 	$t0 $s5 asm_pseudo_data_loop			#newline
+		j asm_iterate_and_copy_data_line	
 	
 	asm_pseudo_loop_exit:
 		sb $0 0($s7)
-		j asm_exit ########################## quitar esta linea
-		lw	$s0 36($sp)	#regresamos s0 al puntero inicial dle programa
+		j asm_exit
+		la $s0 program_buffer
 	
 	########################## CODIFICAMOS INSTRUCCIONES ###############################################
 	asm_text_loop:
@@ -1030,6 +2588,7 @@
 		syscall 			
 		
 	asm_exit:					#resettear el backup
+		add $sp $sp $s6
 		lw   $a2 44($sp)
 		lw	$a1 40($sp)
 		lw	$a0 36($sp)
@@ -1052,8 +2611,12 @@
 		la $t1 reg1
 		la $t2 reg2
 		la $t3 value
+		sb $0 0($t1)
+		sb $0 0($t2)
+		sb $0 0($t3)
 		li $t4 ' '
 		li $t5 '\n'
+		li $t6 '#'
 	
 	extract_reg1_loop:
 		addi	$s0 $s0 1
@@ -1070,6 +2633,7 @@
 		lb	$t0 0($s0)
 		beq	$t0 $t4 extract_value_loop
 		beq	$t0 $t5 extract_regs_and_value_end
+		beq	$t0 $t6 extract_regs_and_value_end
 		beqz $t0 extract_regs_and_value_end
 		sb	$t0 0($t2)
 		addi	$t2 $t2 1
@@ -1078,8 +2642,9 @@
 	extract_value_loop:
 		addi	$s0 $s0 1
 		lb	$t0 0($s0)
-		beq	$t0 $t4 extract_value_loop
+		beq	$t0 $t4 extract_regs_and_value_end
 		beq	$t0 $t5 extract_regs_and_value_end
+		beq	$t0 $t6 extract_regs_and_value_end
 		beqz $t0 extract_regs_and_value_end
 		sb	$t0 0($t3)
 		addi	$t3 $t3 1
@@ -1247,6 +2812,76 @@
 
    	ascii_to_int_exit:
 		jr 	$ra
+		
+     ######### ascii_to_int_generic ####################
+     ascii_to_int_generic:     # the infamous atoi, with no validations!
+      	move $t5 $a0
+      	li 	$t1 0		# init with zero
+      	li 	$t2 '0'	
+      	li 	$t3 '9'	
+      	li 	$t4 10
+     	li 	$v0 0
+
+     ascii_to_int_generic_loop:
+		lb 	$t0 0($t5)
+		beq 	$t0 $0  ascii_to_int_generic_exit
+		blt 	$t0 $t2 ascii_to_int_generic_exit	# only accept numbers
+		bgt 	$t0 $t3 ascii_to_int_generic_exit	# only accept numbers
+		addi $t5 $t5 1			# advance the char pointer
+		addi $t0 $t0 -48		# get real number (without the '0' offset)
+		mul  $v0 $v0 $t4		# multiply by 10
+		add  $v0 $v0 $t0		# add real number
+		j 	ascii_to_int_generic_loop
+
+   	ascii_to_int_generic_exit:
+		jr 	$ra
+				
+	######### int_to_ascii ####################
+	
+	int_to_ascii:
+		move	$t4 $a0
+		beqz	$t4 signed_is_zero
+		add	$t5 $0 $0 #inicializamos nuestro contador a 0
+		addi	$t6 $0 10 #asignamos a t6 la base 10
+		bgtz	$t4 signed_not_negative
+		addi	$t7 $0 '-'
+		sb	$t7 0($s7) #guardamos el signo negativo en el resultado y corremos 1
+		addi	$s7 $s7 1 
+	
+	signed_not_negative:
+		abs	$t4 $t4 #sacamos el valor absoluto del numero
+	
+	whileSigned:
+		beqz	$t4 endSigned
+		div	$t4 $t6
+		mflo	$t4
+		mfhi	$t7 #guardamos el residuo en $t6
+		addi	$sp $sp -1 #pedimos 1 en el stack para guardar el ascii del residuo
+		addi	$t5 $t5 1 #sumamos 1 al contador para saber cuanto hemos corrido el stack
+		addi	$t7 $t7 48 #sumamos 48 al residuo para convertirlo a ascii
+		sb	$t7 0($sp)
+		j	whileSigned
+	
+	endSigned:
+						
+	whileSignedChars:
+		beqz	$t5 endSignedChars
+		lb	$t7 0($sp) #cargamos el digito mas alto del numero
+		sb	$t7 0($s7)
+		addi	$sp $sp 1 #regresamos el $sp 1 posicion
+		addi	$t5 $t5 -1 #restamos 1 al contador
+		addi	$s7 $s7 1
+		j whileSignedChars
+	
+	endSignedChars:
+		j end_s_zero
+						
+	signed_is_zero: #si el numero es 0 solo agregamos el 0 a la respuesta
+		addi	$t7 $0 48
+		sb	$t7 0($s7)
+	
+	end_s_zero:
+		jr $ra
 
 	############# strcmp ####################
 	strcmp:
@@ -1274,3 +2909,103 @@
 	strcmp_false:
 		li	$v0 0
 		jr 	$ra
+
+     ######### asm_label_check #################
+     asm_label_check:			# verifica si la cadena es un label
+		li $t1 ':'
+		li $t2 ' '
+		li $t3 10
+
+	asm_label_loop:
+		lb $t0 0($a0)
+		addi $a0 $a0 1
+		beq $t0 $t1 asm_label_true
+		beq $t0 $t2 asm_label_false
+		beq $t0 $t3 asm_label_false
+		j asm_label_loop
+
+     asm_label_true:
+		#move $s0 $a0
+		li $v0 1
+		jr $ra
+
+     asm_label_false:
+		li $v0 0
+		jr $ra
+		
+		
+	################ copy_extract_reg2 ################
+	copy_extract_reg2:
+ 		la	$t0 reg2
+ 		li	$t2 0 		#flag
+ 		li	$t3 '$'
+ 		li      $t4 ')'
+ 	copy_extract_reg2_loop:
+ 		lb 	$t1 0($t0)
+ 		addi	$t0 $t0 1
+ 		beqz	$t1 copy_extract_reg2_exit
+ 		beq	$t1 $t4 copy_extract_reg2_exit
+ 		beq	$t1 $t3 do_copy
+ 		bnez	$t2 do_copy
+ 		j	copy_extract_reg2_loop
+ 	do_copy:
+ 		li 	$t2 1
+ 		sb 	$t1 0($s7)
+ 		addi	$s7 $s7 1
+ 		j copy_extract_reg2_loop
+ 			
+ 	copy_extract_reg2_exit:
+ 		jr $ra
+ 	
+ 	############## string_contains_char #################
+ 	string_contains_char:
+		li	$t3 '\n'
+		li	$t4 '\t'
+	string_contains_char_loop:
+		lb 	$t0 0($a0)
+		move	$t1 $a1
+		beq 	$t0 $t3 str_contains_char_false		
+		beq 	$t0 $t4 str_contains_char_false		
+		beq 	$t0 $0 str_contains_char_false 
+		beq	$t0 $t1 str_contains_char_true
+		addi $a0 $a0 1
+		j	string_contains_char_loop
+	str_contains_char_true:
+		li 	$v0 1
+		jr	$ra
+	str_contains_char_false:
+		li	$v0 0
+		jr 	$ra
+		
+		
+	################ string_is_number ####################
+	string_is_number:
+		li	$t3 '\n'
+	string_is_number_loop:
+		lb 	$t0 0($a0)
+		beq 	$t0 $t3 str_contains_char_true
+		beq 	$t0 $0 str_contains_char_true
+		li	$t1 '0'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '1'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '2'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '3'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '4'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '5'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '6'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '7'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '8'
+		beq	$t1 $t0 continue_is_number
+		li	$t1 '9'
+		beq	$t1 $t0 continue_is_number
+		j	str_contains_char_false
+	continue_is_number:
+		addi 	$a0 $a0 1
+		j 	string_is_number_loop
