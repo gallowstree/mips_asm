@@ -1,6 +1,6 @@
 .data
 	##############PROGRAMA A CODIFICAR################
-	programa: .asciiz ".data\n mierda: .asciiz 'shit'\n popo: asciizmain:\n.text\ndiv $t0 $t1\nmflo $t2\nlabel:\n###############mierda#########\nmove $t0 $t0\nabs $t1 $t2\n.data\n.asciiz 'mierdesima'\npopo: .asciizc 'shit'"
+	programa: .asciiz "addi $t0 $t0 100\naddi $t0 $t0 100\nloop:\nmove $s0 $s0\nsne $t0 $t2 100\nrol $t0 $t0 10\nloop2:\nli $t0 100\nbeq $t0 $0 loop"
 
 	##################################################
 
@@ -19,7 +19,11 @@
 		#li $v0 4
         	#syscall
 		
-		#la $t0 data_counter
+		la $t0 symbol_table
+		lw $a0 8($t0)
+		li $v0 1
+		syscall
+		#la $t0 text_counter
 		#lw $a0 0($t0)
 		#li $v0 1
 		#syscall
@@ -90,6 +94,7 @@
 		reg1:		 .space 30
 		reg2:		 .space 30
 		value:		 .space 30
+		aux_string:	 .space 30
 		asm_flag:		 .word 0
 		text_counter: 	 .word 39996
 		data_counter:   .word -4
@@ -329,7 +334,7 @@
 		move	$a0 $s0	
 		la	$a1 str_sne
 		jal	strcmp
-		bnez	$v0 asm_pseudo_sn
+		bnez	$v0 asm_pseudo_sne
 		j asm_check_label
 		
 	asm_pseudo_abs:
