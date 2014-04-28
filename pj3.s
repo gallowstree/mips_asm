@@ -1,11 +1,11 @@
 .data
 	##############PROGRAMA A CODIFICAR################
-	programa: .asciiz "jal loop\nori $a0 $0 125\nori $v0 $0 1\nsyscall\nori $a0 $0 150\nori $v0 $0 1\nsyscall\nj exit\nloop:\nori $a0 $0 100\nori $v0 $0 1\nsyscall\njr $ra\nexit:"
+	programa: .asciiz "j mierda\nmierda:\naddi $a0 $0 100\nori $v0 $0 1\nsyscall\nori $v0 $0 10\nsyscall"
 	##################################################
 
 .align 2
 	data: .space 200 #data del programa
-	text: .space 400 #espacio para programa compilado
+	text: .space 700 #espacio para programa compilado
 
 .text
 	main:
@@ -25,7 +25,7 @@
 		#syscall
 		
 		#la $t0 symbol_table
-		#lw $a0 8($t0)
+		#lw $a0 0($t0)
 		#li $v0 1
 		#syscall
 		#la $t0 text_counter
@@ -95,15 +95,16 @@
 		str_sw:		.asciiz	"sw"
 		str_syscall:	.asciiz	"syscall"
 	#flags and variables
-		program_buffer: .space 600
+		program_buffer: .space 1000
 		reg1:		 .space 30
 		reg2:		 .space 30
 		value:		 .space 30
 		aux_string:	 .space 30
 		asm_flag:		 .word 3
 		text_counter: 	 .word 39996
-		data_counter:   .word -4
+		data_counter:   .word -1
 		row:			 .word 0
+		text_addr:		  .word 0
 	#códigos de error:
 		err_unknown:	.asciiz "error desconocido \n"
 		err_0:		.asciiz "instrucción inválida \n"
@@ -129,7 +130,8 @@
 
 		#movemos los argumentos a un lugar seguro
 		move $s0 $a0
-		move $s1 $a1
+		sw $a1 text_addr
+		move $s1 $a2  #copiamos la direccion de .data del programa
 		move $s3 $sp
 		li $s6 0
 		la $s7 program_buffer
@@ -218,6 +220,11 @@
 		addi $s7 $s7 -1
 		
 		move $a0 $s0			# verifico si es la directiva .data
+		la $a1 str_asciiz
+		jal strcmp
+		bne $v0 $0 asm_asciiz
+		
+		move $a0 $s0			# verifico si es la directiva .data
 		la $a1 str_data
 		jal strcmp
 		bne $v0 $0 asm_pseudo_data
@@ -299,7 +306,6 @@
 		
 		j asm_check_label
 		
-		
 	asm_get_pseudo_n:
 		addi	$s0 $s0 -1 
 		addi $s7 $s7 -1
@@ -341,7 +347,31 @@
 		jal	strcmp
 		bnez	$v0 asm_pseudo_sne
 		j asm_check_label
+	
+	asm_asciiz:
+		li $t0 '\''
+		li $t1 '"'
+		addi $s0 $s0 2 #nos corremos 2 para eliminar el espacio y la comilla
+	
+	asm_asciiz_loop:
+		lb $t3 0($s0)
+		beq $t3 $t0 end_asciiz_loop
+		beq $t3 $t1 end_asciiz_loop
+		sb $t3 0($s1)
+		addi $s0 $s0 1 #avanzamos 1 en el puntero
+		addi $s1 $s1 1 #avanzamos 1 en el puntero
+		lw $t4 data_counter #cargamos e incrementamos el contador en 1
+		addi $t4 $t4 1
+		sw $t4 data_counter
+		j asm_asciiz_loop
+	
+	end_asciiz_loop:
+		addi $s0 $s0 1
+		sb $0 0($s1)
+		addi $s1 $s1 1
+		j asm_pseudo_data_loop
 		
+	
 	asm_pseudo_abs:
 		jal extract_regs_and_value
 		li $t0 's'
@@ -2011,11 +2041,11 @@
 		j asm_pseudo_loop
 		
 	asm_pseudo_text:
-		addi $s0 $s0 -5
+		#addi $s0 $s0 -5
 		j asm_iterate_and_copy_line
 	
 	asm_pseudo_data:
-		addi $s0 $s0 -5
+		#addi $s0 $s0 -5
 		j asm_iterate_and_copy_data_line
 	
 	asm_check_label:
@@ -2100,7 +2130,7 @@
 		lw $t1 0($t0) 
 		la $t6 row
 		lw $t2 0($t6)
-		addi $t1 $t1 4 #le sumamos 4 al contador de direcciones de data
+		addi $t1 $t1 1 #le sumamos 4 al contador de direcciones de data
 		addi $sp $sp -1 
 		addi $s6 $s6 1
 		
@@ -2155,8 +2185,9 @@
 		#incrementamos el contador de las direcciones 
 		la $t0 data_counter
 		lw $t1 0($t0)
-		addi $t1 $t1 4
+		addi $t1 $t1 1
 		sw $t1 0($t0)
+		j asm_pseudo_data_loop
 	
 	asm_iterate_and_copy_data_line:				
 		li 	$s4 '#'						#recorremos toda la linea hasta encontrar un new line
@@ -2172,10 +2203,15 @@
 	
 	asm_pseudo_loop_exit:
 		sb $0 0($s7)
-		#j asm_exit
+		j asm_exit
 		la $s0 program_buffer
 	
 	########################## CODIFICAMOS INSTRUCCIONES ###############################################
+	lw $s1 text_addr
+	lw $t0 text_counter #reiniciamos el contador
+	addi $t0 $0 39996
+	sw $t0 text_counter
+	
 	asm_text_loop:
 		li	$s4 ' '
 		li 	$s5 '\n'
@@ -2184,7 +2220,6 @@
 		beq	$t0 $0 asm_exit		#fin del codigo?
 		beq 	$t0 $s4 asm_text_loop	#espacio en blanco
 		beq 	$t0 $s5 asm_text_loop	#newline
-		beq	$t0 '.' asm_get_punto	#obtener instrucciones que empiezan con .
 		beq	$t0 'a' asm_get_a		#obtener instrucciones que empiezan con a
 		beq	$t0 'b' asm_get_b		#obtener instrucciones que empiezan con b
 		beq	$t0 'd' asm_get_d		#obtener instrucciones que empiezan con d
@@ -2197,27 +2232,6 @@
 		li	$a0 0
 		j asm_error
 
-
-	asm_get_punto:
-		addi $s0 $s0 -1
-
-		move $a0 $s0
-		la   $a1 str_asciiz
-		jal	strcmp
-		bnez	$v0 asm_asciiz
-
-		move	$a0 $s0
-		la	$a1 str_data
-		jal	strcmp
-		bnez	$v0 asm_data
-
-		move	$a0 $s0
-		la	$a1 str_text
-		jal	strcmp
-		bnez $v0 asm_text
-		
-		li	$a0 0
-		j asm_error	
 
 	asm_get_a:
 		addi	$s0 $s0 -1 	#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
@@ -2268,30 +2282,30 @@
 		la	$a1 str_beq
 		jal	strcmp
 		li 	$s7 0x04
-		bnez $v0 asm_i_type
+		bnez $v0 asm_branch
 		
 		move	$a0 $s0
 		la	$a1 str_bgtz
 		jal	strcmp
 		li 	$s7 0x07
-		bnez $v0 asm_i_type
+		bnez $v0 asm_bgtz
 
 
 		move	$a0 $s0
 		la	$a1 str_bne
 		jal	strcmp
 		li 	$s7 0x05
-		bnez $v0 asm_i_type
+		bnez $v0 asm_branch
 
 		j 	asm_error
 
 	asm_get_d:
 		addi	$s0 $s0 -1 	#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
 
-		#move	$a0 $s0		#verificamos si la instruccion es abs
-		#la	$a1 str_div
-		#jal	strcmp
-		#bnez $v0 asm_div
+		move	$a0 $s0		#verificamos si la instruccion es abs
+		la	$a1 str_div
+		jal	strcmp
+		bnez $v0 asm_r_type
 
 		move	$a0 $s0
 		la	$a1 str_divu
@@ -2303,23 +2317,23 @@
 	asm_get_j:
 		addi	$s0 $s0 -1 	#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
 
-		move	$a0 $s0		#verificamos si la instruccion es abs
-		la	$a1 str_j
-		jal	strcmp
-		li 	$s7 0x02
-		bnez $v0 asm_j_type
-
-		move	$a0 $s0
-		la	$a1 str_jal
+		move	$a1 $s0
+		la	$a0 str_jal
 		jal	strcmp
 		li 	$s7 0x03
 		bnez $v0 asm_j_type
 
-		move	$a0 $s0
-		la	$a1 str_jr
+		move	$a1 $s0
+		la	$a0 str_jr
 		jal	strcmp
 		li 	$s7 0x08
 		bnez $v0 asm_jr
+		
+		move	$a1 $s0		#verificamos si la instruccion es abs
+		la	$a0 str_j
+		jal	strcmp
+		li 	$s7 0x02
+		bnez $v0 asm_j_type
 
 		j	asm_error
 	asm_get_l:
@@ -2396,11 +2410,6 @@
 	asm_get_s:
 		addi	$s0 $s0 -1 	#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
 
-		#move	$a0 $s0	
-		#la	$a1 str_seq
-		#jal	strcmp
-		#bnez $v0 asm_seq
-
 		move	$a0 $s0	
 		la	$a1 str_sll
 		jal	strcmp
@@ -2437,11 +2446,6 @@
 		jal	strcmp
 		li 	$s7 0x2b
 		bnez $v0 asm_r_type
-
-		#move	$a0 $s0	
-		#la	$a1 str_sne
-		#jal	strcmp
-		#bnez $v0 asm_sne
 
 		move	$a0 $s0	
 		la	$a1 str_srl
@@ -2481,14 +2485,11 @@
 		li	$a0 0
 		j asm_error
 
-		asm_asciiz:
-			j exit
-		asm_data:
-			j exit
-		asm_text:
-			j exit
 		asm_r_type:			#codifica instrucciones tipo r, 
-			
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+		
 			addi	$s0 $s0 1	#eliminar espacio
 			jal 	asm_regs	#n?mero de registro rd
 			add	$s4 $0 $v0	#ponemos rd en s4 con todo lo dem?s en 0
@@ -2520,9 +2521,15 @@
 			addi 	$s1 $s1 4
 			li	$s5 0
 			sw	$s5 asm_flag	#setear flag a 0
+	
 			j asm_text_loop
 
-		asm_i_type:
+asm_i_type:
+			#incrementamos contador de direcciones
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+			
 			sll 	$s7 $s7 10	# shift porque son 5b de rt + 5b de rs
 			addi $s0 $s0 1		# elimino el espacio
 			jal 	asm_regs       # me devuelve el numero del registro
@@ -2541,7 +2548,52 @@
 			addi $s1 $s1 4
 			j asm_text_loop
 			
+		asm_branch:
+			#incrementamos contador de direcciones
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+
+			sll 	$s7 $s7 10	# shift porque son 5b de rt + 5b de rs
+			addi $s0 $s0 1		# elimino el espacio
+			jal 	asm_regs       # me devuelve el numero del registro
+			add 	$s7 $s7 $v0	# almaceno el numero del registro en rs
+
+			addi	$s0 $s0 1		# elimino el espacio
+			jal 	asm_regs       # me devuelve el numero del registro
+			sll 	$v0 $v0 5		# pongo rs en la posicion que debe ir (van cruzados)
+			or  	$s7 $s7 $v0		# almaceno el numero del registro en rt
+      
+			sll 	$s7 $s7 16	# le hago shift de 16 para hacer espacio al imm
+			addi $s0 $s0 1		# elimino el espacio
+			add $a0 $s0 $0
+			jal get_addr_from_st
+			add $t1 $v0 $0
+			li $t2 0
+			blt $t1 $t0 negative_branch
+				subi $t2 $t2 4
+			negative_branch:
+				sub $t2 $t1 $t0
+				div $t2 $t2 4
+				
+			addu $s7 $s7 $t2 	# concateno el imm con el resto que ya tenia
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi $s1 $s1 4
+			j asm_text_loop
+		
+		asm_bgtz:
+			#incrementamos contador de direcciones
+			lw $t0 text_counter
+			addi $t0 $t0 4
+			sw $t0 text_counter
+			j asm_text_loop
+
+			
 		asm_jr:
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+
 			addi $s0 $s0 1		# elimino el espacio
 			jal 	asm_regs	#numero de registro rd
 			add	$s4 $0 $v0	#ponemos rd en s4 con todo lo dem?s en 0
@@ -2552,6 +2604,10 @@
 			j asm_text_loop
 
 		asm_j_type:
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+
 			sll $s7 $s7 25
 			addi $s0 $s0 1		# elimino el espacio
 			add $a0 $s0 $0
@@ -2562,13 +2618,6 @@
 			sw 	$s7 0($s1)	# almaceno la instruccion codificada
 			addi $s1 $s1 4
 			j asm_text_loop
-			
-	asm_data_loop:				#TO DO
-		addi	$s0 $s0 -1 		#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
-
-		j asm_error			# :(
-
-
 
 	asm_error:
 		addi	$s0 $s0 -1 		#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
@@ -2786,6 +2835,10 @@
      
      ######### asm_syscall #####################
      asm_syscall:			# esta instruccion es muy facil de codificar ;)
+     	lw $s4 text_counter
+		addi $s4 $s4 4
+		sw $s4 text_counter
+     
 		la 	$t0 0x0000000c
 		sw 	$t0 0($s1)
 		addi $s1 $s1 4
