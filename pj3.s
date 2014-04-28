@@ -1,7 +1,6 @@
 .data
 	##############PROGRAMA A CODIFICAR################
-	programa: .asciiz "addi $t0 $t0 100\naddi $t0 $t0 100\nloop:\nmove $s0 $s0\nsne $t0 $t2 100\nrol $t0 $t0 10\nloop2:\nli $t0 100\nbeq $t0 $0 loop"
-
+	programa: .asciiz "jal loop\nori $a0 $0 125\nori $v0 $0 1\nsyscall\nori $a0 $0 150\nori $v0 $0 1\nsyscall\nj exit\nloop:\nori $a0 $0 100\nori $v0 $0 1\nsyscall\njr $ra\nexit:"
 	##################################################
 
 .align 2
@@ -19,16 +18,22 @@
 		#li $v0 4
         	#syscall
 		
-		la $t0 symbol_table
-		lw $a0 8($t0)
-		li $v0 1
-		syscall
+		#la $a0 palabra
+		#jal get_addr_from_st
+		#add $a0 $v0 $0
+		#li $v0 1
+		#syscall
+		
+		#la $t0 symbol_table
+		#lw $a0 8($t0)
+		#li $v0 1
+		#syscall
 		#la $t0 text_counter
 		#lw $a0 0($t0)
 		#li $v0 1
 		#syscall
 		
-		#jr	$v0
+		jr	$v0
 		
 		j	exit
 
@@ -95,7 +100,7 @@
 		reg2:		 .space 30
 		value:		 .space 30
 		aux_string:	 .space 30
-		asm_flag:		 .word 0
+		asm_flag:		 .word 3
 		text_counter: 	 .word 39996
 		data_counter:   .word -4
 		row:			 .word 0
@@ -104,7 +109,7 @@
 		err_0:		.asciiz "instrucción inválida \n"
 		
 	#espacios para tabla de simbolos con capacidad de 50 simbolos
-		symbol_table:	.word 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+		symbol_table:	.word -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 		
 	.text	
 		#backup a la memoria
@@ -662,55 +667,6 @@
 		beqz $t1 asm_div_tal 			#si solo tiene 2 registros es tal
 		bne $t1 '$' asm_pseudo_div_im		#si no empieza con $ el tercer registro es inmediato
 		
-		li $t0 'b'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 'n'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 'e'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 ' '
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		jal copy_value
-		li $t0 ' '
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 '$'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 '0'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 ' '
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 '1'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 '\n'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 'b'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 'r'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 'e'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 'a'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 'k'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 '\n'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
 		li $t0 'd'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
@@ -751,7 +707,7 @@
 		#incrementamos el contador de las direcciones 
 		la $t0 text_counter
 		lw $t1 0($t0)
-		addi $t1 $t1 16
+		addi $t1 $t1 8
 		sw $t1 0($t0)
 		j asm_pseudo_loop
 		
@@ -2114,13 +2070,25 @@
 		addi $sp $sp -1
 		addi $s6 $s6 1
 		bne $t0 $s4 asm_pseudo_label_loop		
-		addi $sp $sp 1
-		addi $s6 $s6 -1
+		addi $sp $sp 1 #eliminamos los :
+		addi  $s6 $s6 -1
 		sb $0 0($sp)
+		
+		
+	asm_align_text_sp: #chapuz para alinear la $sp
+		li $t1 4
+		div $sp $t1  
+		mfhi $t0
+		beqz $t0 asm_label_nl_loop
+		addi $sp $sp -1
+		addi $s6 $s6 1 
+		sb $0 0($sp)
+		j asm_align_text_sp
 	
 	asm_label_nl_loop: #recorremos hasta encontrar un \n
 		lb $t0 0($s0)
 		addi $s0 $s0 1
+		beq $t0 $0 asm_pseudo_loop_exit
 		bne $t0 $s5 asm_label_nl_loop
 		j asm_pseudo_loop
 		
@@ -2156,11 +2124,20 @@
 		addi $sp $sp -1
 		addi $s6 $s6 1
 		bne $t0 $s4 asm_pseudo_data_label_loop		
-		addi $sp $sp 1
-		addi $s6 $s6 -1
+		addi $sp $sp 1 #eliminamos los :
+		addi  $s6 $s6 -1
 		sb $0 0($sp)
 		addi $s0 $s0 1 #eliminamos el espacio
-		j asm_increment_data_counter
+		
+	asm_align_data_sp: #chapuz para alinear la $sp
+		li $t1 4
+		div $sp $t1  
+		mfhi $t0
+		beqz $t0 asm_increment_data_counter
+		addi $sp $sp -1
+		addi $s6 $s6 1 
+		sb $0 0($sp)
+		j asm_align_data_sp	
 
 	asm_iterate_and_copy_line:				
 		li 	$s4 '#'						#recorremos toda la linea hasta encontrar un new line
@@ -2195,7 +2172,7 @@
 	
 	asm_pseudo_loop_exit:
 		sb $0 0($s7)
-		j asm_exit
+		#j asm_exit
 		la $s0 program_buffer
 	
 	########################## CODIFICAMOS INSTRUCCIONES ###############################################
@@ -2323,7 +2300,6 @@
 		bnez $v0 asm_r_type
 
 		j 	asm_error
-
 	asm_get_j:
 		addi	$s0 $s0 -1 	#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
 
@@ -2343,7 +2319,7 @@
 		la	$a1 str_jr
 		jal	strcmp
 		li 	$s7 0x08
-		bnez $v0 asm_r_type
+		bnez $v0 asm_jr
 
 		j	asm_error
 	asm_get_l:
@@ -2525,7 +2501,7 @@
 			sll	$s4 $s4 21	#corremos rs 21 bits (shamt + func + rt + rd)
 			or	$s7 $s7 $s4	#apendar funct
 			
-			lw	$s4 asm_flag	#bandera que indica si necesitamos tomar en cuenta corrimiento
+			lw	$s4 asm_flag	#bandera que indica si necesitamos tomar en cuenta corrimient
 			beqz	$s4 no_shamt
 			addi	$s0 $s0 1	#eliminar espacio
 			jal	ascii_to_int	#obtenemos el shamt
@@ -2545,7 +2521,6 @@
 			li	$s5 0
 			sw	$s5 asm_flag	#setear flag a 0
 			j asm_text_loop
-			j exit
 
 		asm_i_type:
 			sll 	$s7 $s7 10	# shift porque son 5b de rt + 5b de rs
@@ -2565,9 +2540,29 @@
 			sw 	$s7 0($s1)	# almaceno la instruccion codificada
 			addi $s1 $s1 4
 			j asm_text_loop
+			
+		asm_jr:
+			addi $s0 $s0 1		# elimino el espacio
+			jal 	asm_regs	#numero de registro rd
+			add	$s4 $0 $v0	#ponemos rd en s4 con todo lo dem?s en 0
+			sll $s4 $s4 20
+			or $s7 $s7 $4
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi $s1 $s1 4
+			j asm_text_loop
 
 		asm_j_type:
-			j exit
+			sll $s7 $s7 25
+			addi $s0 $s0 1		# elimino el espacio
+			add $a0 $s0 $0
+			jal get_addr_from_st
+			sll $v0 $v0 6
+			srl $v0 $v0 8		#movemos la direccion solo para obtener los 26 bits que necesitamos
+			or $s7 $s7 $v0
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi $s1 $s1 4
+			j asm_text_loop
+			
 	asm_data_loop:				#TO DO
 		addi	$s0 $s0 -1 		#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
 
@@ -2709,7 +2704,7 @@
  	
      ############# asm_regs ####################
 
-	asm_regs:					# pasa de $AN -> N ej. $s0 -> 16
+	asm_regs:					# pasa de $AN -> N ej. $s0 -> 16	
 		addi $sp $sp -4		# por supuesto que esta incompleto...
 		sw 	$ra 0($sp)
 		li 	$t7 '$'			# voy a utilizarlo para verificar que viene un registro
@@ -3014,3 +3009,83 @@
 	continue_is_number:
 		addi 	$a0 $a0 1
 		j 	string_is_number_loop
+		
+	################ get_addr_from_st ####################
+	get_addr_from_st:
+		la $t0 symbol_table #cargamos la direccion inicial de la matriz
+		add $t1 $0 $0 #inicializamos $t1 en la fila 0
+		
+		#para tener la posicion del arreglo alumnos_matriz[row][col] debemos multiplicar 4*(2*row+col) y sumarle la direccion inicial
+		#donde 4 es el tamano de cada elemento, 2 la cantidad de columnas, row y col la fila y columna actual
+	loop_addr:
+		addi $t2 $0 2 #cantidad de columnas de la matriz
+		addi $t3 $0 4 #tamanio de cada elemento del array, como son word lo ponemos a 4 bytes
+		mult $t2 $t1 #multiplicamos cantidad de columnas por la fila actual
+		mflo $t4 
+		add $t4 $t4 1 #sumamos la columna de la cual queremos saber la direccion, en este caso es la columna 0
+		mult $t4 $t3 #multiplicamos el size
+		mflo $t4
+		add $t4 $t0 $t4 #sumamos la direccion de la celda actual a la direccion inicial de la matriz
+		
+		lw $t5 0($t4)
+		beq $t5 -1 end_loop_addr #si la posicion actual es -1 quiere decir que el alumno no existe
+		add $t6 $0 $0 #inicializamos el length del argumento recibido a 0
+		add $t7 $0 $0 #inicializamos el length del nombre guardado a 0
+		add $t8 $a0 $0 #copiamos la direccion recibida en el argumento
+		add $t9 $t5 $0 #copiamos la direccion actual del arreglo		
+				
+	loop_length1:
+		lb $t2 0($t8) #cargamos el byte de la direccion recibida en el arg
+		beqz $t2 end_loop_length1
+		beq $t2 ' ' end_loop_length1
+		beq $t2 '\n' end_loop_length1
+		beq $t2 '#' end_loop_length1
+		addi $t8 $t8 1 #corremos la direccion en 1
+		addi $t6 $t6 1 #incrementamos el contador del a1 en 1
+		j loop_length1
+	
+	end_loop_length1:
+				
+	loop_length2:
+		lb $t2 0($t9) #cargamos el byte de la direccion actual del arreglo
+		beqz $t2 end_loop_length2
+		addi $t9 $t9 -1 #corremos la direccion en 1
+		addi $t7 $t7 1 #incrementamos el contador del a1 en 1
+		j loop_length2
+				
+	end_loop_length2:
+		bne $t6 $t7 not_equal_strings #comparamos los length
+		add $t8 $a0 $0 #copiamos la direccion recibida en el argumento
+		add $t9 $t5 $0 #copiamos la direccion actual del arreglo
+	
+	loop_compare_strings:
+		lb $t2 0($t8) #cargamos el byte de la direccion recibida en el arg
+		lb $t3 0($t9) #cargamos el byte de la direccion actual del arreglo
+		beqz $t2 equal_strings
+		beq $t2 ' ' equal_strings
+		beq $t2 '\n' equal_strings
+		beq $t2 '#' equal_strings
+		bne $t2 $t3 not_equal_strings	
+		addi $t8 $t8 1
+		addi $t9 $t9 -1
+		j loop_compare_strings
+	
+	equal_strings:
+		addi $t2 $0 2 #cantidad de columnas de la matriz
+		addi $t3 $0 4 #tamanio de cada elemento del array, como son word lo ponemos a 4 bytes
+		mul $t4 $t2 $t1 #multiplicamos cantidad de columnas por la fila actua
+		add $t4 $t4 0 #sumamos la columna de la cual queremos saber la direccion, en este caso es la columna 0
+		mul $t4 $t4 $t3 #multiplicamos el siz
+		add $t4 $t0 $t4 #sumamos la direccion de la celda actual a la direccion inicial de la matriz
+		move $s0 $t8
+		lw $v0 0($t4)
+		jr $ra
+				
+	not_equal_strings:
+		addi $t1 $t1 1 #avanzamos de fila
+		j loop_addr
+	
+	end_loop_addr:
+		j asm_error
+		add $v0 $0 -1
+		jr $ra
