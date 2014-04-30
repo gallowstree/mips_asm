@@ -1,6 +1,9 @@
 .data
 	##############PROGRAMA A CODIFICAR################
-	programa: .asciiz "j mierda\nmierda:\naddi $a0 $0 100\nori $v0 $0 1\nsyscall\nori $v0 $0 10\nsyscall"
+	#programa: .asciiz "add $t0 $t0 $0\nli $t1 10\nloop:\nbeq $t0 $t1 end\nor $a0 $t0 $0\nli $v0 1\nsyscall \naddi $t0 $t0 1\nj loop\nend:\nori $v0 $0 10\nsyscall"
+	#programa: .asciiz "addi $a0 $0 10\njal get_square\nadd $a0 $v0 $0\nli $v0 1\nsyscall\nj end\nget_square:\nmul $v0 $a0 $a0\nmflo $v0\njr $ra\nend:\nori $v0 $0 10\nsyscall"
+	#programa: .asciiz "addi $t0 $0 10\nmul $a0 $t0 $t0\nori $v0 $0 1\nsyscall\nori $v0 $0 10\nsyscall"
+	programa: .asciiz ".data\nprueba: .asciiz 'esto es una prueba'\n.text\nla $a0 prueba\nli $v0 4\nsyscall\nori $v0 $0 10\nsyscall"
 	##################################################
 
 .align 2
@@ -14,26 +17,11 @@
 		la	$a2 data
 		jal	ensamblador	
 		
+		jr	$v0
+		
 		#la $a0 program_buffer
 		#li $v0 4
-        	#syscall
-		
-		#la $a0 palabra
-		#jal get_addr_from_st
-		#add $a0 $v0 $0
-		#li $v0 1
 		#syscall
-		
-		#la $t0 symbol_table
-		#lw $a0 0($t0)
-		#li $v0 1
-		#syscall
-		#la $t0 text_counter
-		#lw $a0 0($t0)
-		#li $v0 1
-		#syscall
-		
-		jr	$v0
 		
 		j	exit
 
@@ -88,21 +76,23 @@
 		str_sltiu:	.asciiz	"sltiu"
 		str_sltu:		.asciiz	"sltu"
 		str_sne:		.asciiz	"sne"
+		str_sra:		.asciiz	"sra"
 		str_srl:		.asciiz	"srl"
 		str_srlv:		.asciiz	"srlv"
 		str_sub:		.asciiz	"sub"
 		str_subu:		.asciiz	"subu"
 		str_sw:		.asciiz	"sw"
 		str_syscall:	.asciiz	"syscall"
+		str_xor:		.asciiz	"xor"
 	#flags and variables
 		program_buffer: .space 1000
 		reg1:		 .space 30
 		reg2:		 .space 30
 		value:		 .space 30
 		aux_string:	 .space 30
-		asm_flag:		 .word 3
-		text_counter: 	 .word 39996
-		data_counter:   .word -1
+		asm_flag:		 .word 0
+		text_counter: 	 .word 0
+		data_counter:   .word 0
 		row:			 .word 0
 		text_addr:		  .word 0
 	#códigos de error:
@@ -135,7 +125,13 @@
 		move $s3 $sp
 		li $s6 0
 		la $s7 program_buffer
-
+		add $t0 $a1 $0
+		sub $t0 $t0 4
+		sw $t0 text_counter
+		add $t0 $a2 $0
+		sub $t0 $t0 1
+		sw $t0 data_counter
+		
 	###################### REEMPLAZAMOS INSTRUCCIONES MAL POR TAL #######################################
 	asm_pseudo_loop:
 		li	$s4 ' '
@@ -1075,19 +1071,47 @@
 		j asm_pseudo_loop
 		
 	la_using_label:
-		li $t0 'a'
+		lw $t1 data_counter
+		srl $t1 $t1 16
+		
+		li $t0 'l'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
-		li $t0 'd'
-		sb $t0 0($s7)
-		addi $s7 $s7 1
-		li $t0 'd'
+		li $t0 'u'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		li $t0 'i'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
-		li $t0 'u'
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 '$'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 ' '
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		
+		add $a0 $t1 $0
+		jal int_to_ascii
+		
+		li $t0 '\n'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'o'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'r'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 'i'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		li $t0 ' '
@@ -1100,12 +1124,22 @@
 		li $t0 '$'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
-		li $t0 '0'
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		li $t0 ' '
 		sb $t0 0($s7)
 		addi $s7 $s7 1
+		jal copy_reg2
+		
+		#contador
+		la $t0 text_counter
+		lw $t1 0($t0)
+		addi $t1 $t1 8
+		sw $t1 0($t0)
 		j asm_pseudo_loop
 		
 	asm_pseudo_move:
@@ -1193,7 +1227,7 @@
 		#incrementamos el contador de las direcciones 
 		la $t0 text_counter
 		lw $t1 0($t0)
-		addi $t1 $t1 12
+		addi $t1 $t1 8
 		sw $t1 0($t0)
 		j asm_pseudo_loop
 		
@@ -1256,7 +1290,10 @@
 		li $t0 '$'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
-		li $t0 '1'
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		li $t0 ' '
@@ -1312,7 +1349,10 @@
 		li $t0 '$'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
-		li $t0 '1'
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		j seq_common
@@ -1340,7 +1380,10 @@
 		li $t0 '$'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
-		li $t0 '1'
+		li $t0 'a'
+		sb $t0 0($s7)
+		addi $s7 $s7 1
+		li $t0 't'
 		sb $t0 0($s7)
 		addi $s7 $s7 1
 		li $t0 ' '
@@ -2203,13 +2246,12 @@
 	
 	asm_pseudo_loop_exit:
 		sb $0 0($s7)
-		j asm_exit
 		la $s0 program_buffer
 	
 	########################## CODIFICAMOS INSTRUCCIONES ###############################################
 	lw $s1 text_addr
-	lw $t0 text_counter #reiniciamos el contador
-	addi $t0 $0 39996
+	add $t0 $s1 0
+	sub $t0 $t0 4
 	sw $t0 text_counter
 	
 	asm_text_loop:
@@ -2226,9 +2268,9 @@
 		beq	$t0 'j' asm_get_j		#obtener instrucciones que empiezan con j
 		beq	$t0 'l' asm_get_l		#obtener instrucciones que empiezan con l
 		beq	$t0 'm' asm_get_m		#obtener instrucciones que empiezan con m
-		beq	$t0 'o' asm_get_o		#obtener instrucciones que empiezan con o
-		beq	$t0 'r' asm_get_r		#obtener instrucciones que empiezan con r
+		beq	$t0 'o' asm_get_o		#obtener instrucciones que empiezan con 
 		beq	$t0 's' asm_get_s		#obtener instrucciones que empiezan con s
+		beq	$t0 'x' asm_get_x		#obtener instrucciones que empiezan con x
 		li	$a0 0
 		j asm_error
 
@@ -2241,6 +2283,7 @@
 		jal	strcmp
 		li 	$s7 0x20
 		move	$a0 $0      	#no hay shamt
+		sw	$0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0
@@ -2259,12 +2302,14 @@
 		la	$a1 str_addu
 		jal	strcmp
 		li 	$s7 0x21
+		sw	$0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0
 		la	$a1 str_and
 		jal	strcmp
 		li 	$s7 0x24
+		sw	$0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0
@@ -2304,36 +2349,38 @@
 
 		move	$a0 $s0		#verificamos si la instruccion es abs
 		la	$a1 str_div
+		li 	$s7 0x1a
 		jal	strcmp
-		bnez $v0 asm_r_type
+		bnez $v0 asm_mult
 
 		move	$a0 $s0
 		la	$a1 str_divu
 		jal	strcmp
 		li 	$s7 0x1b
-		bnez $v0 asm_r_type
+		sw	$0 asm_flag
+		bnez $v0 asm_mult
 
 		j 	asm_error
 	asm_get_j:
 		addi	$s0 $s0 -1 	#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
 
-		move	$a1 $s0
-		la	$a0 str_jal
+		move	$a0 $s0		#verificamos si la instruccion es abs
+		la	$a1 str_j
+		jal	strcmp
+		li 	$s7 0x02
+		bnez $v0 asm_j_type
+
+		move	$a0 $s0
+		la	$a1 str_jal
 		jal	strcmp
 		li 	$s7 0x03
 		bnez $v0 asm_j_type
 
-		move	$a1 $s0
-		la	$a0 str_jr
+		move	$a0 $s0
+		la	$a1 str_jr
 		jal	strcmp
 		li 	$s7 0x08
 		bnez $v0 asm_jr
-		
-		move	$a1 $s0		#verificamos si la instruccion es abs
-		la	$a0 str_j
-		jal	strcmp
-		li 	$s7 0x02
-		bnez $v0 asm_j_type
 
 		j	asm_error
 	asm_get_l:
@@ -2343,7 +2390,7 @@
 		la	$a1 str_lui
 		jal	strcmp
 		li 	$s7 0x0F
-		bnez $v0 asm_i_type
+		bnez $v0 asm_lui
 
 		move	$a0 $s0
 		la	$a1 str_lw
@@ -2360,25 +2407,28 @@
 		la	$a1 str_mfhi
 		jal	strcmp
 		li 	$s7 0x10
-		bnez $v0 asm_r_type
+		sw	$0 asm_flag
+		bnez $v0 asm_mf
 
 		move	$a0 $s0
 		la	$a1 str_mflo
 		jal	strcmp
 		li 	$s7 0x12
-		bnez $v0 asm_r_type
+		sw	$0 asm_flag
+		bnez $v0 asm_mf
 
 		move	$a0 $s0
 		la	$a1 str_mult
 		jal	strcmp
 		li $s7 0x18
-		bnez $v0 asm_r_type
+		bnez $v0 asm_mult
 
 		move	$a0 $s0
 		la	$a1 str_multu
 		jal	strcmp
 		li 	$s7 0x18
-		bnez $v0 asm_r_type
+		sw	$0 asm_flag
+		bnez $v0 asm_mult
 		
 		li	$a0 0
 		j asm_error
@@ -2390,19 +2440,14 @@
 		la	$a1 str_or
 		jal	strcmp
 		li 	$s7 0x25
+		sw	$0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0	
 		la	$a1 str_ori
 		jal	strcmp
 		li 	$s7 0x0d
-		bnez $v0 asm_i_type
-		
-		li	$a0 0
-		j asm_error
-
-	asm_get_r:
-		addi	$s0 $s0 -1 	#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
+		bnez $v0 asm_ori
 		
 		li	$a0 0
 		j asm_error
@@ -2413,20 +2458,23 @@
 		move	$a0 $s0	
 		la	$a1 str_sll
 		jal	strcmp
-		li 	$s7 0x20
+		li 	$s7 0x0
 		li	$a0 1
+		sw	$a0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0	
 		la	$a1 str_sllv
 		jal	strcmp
 		li 	$s7 0x04
+		sw	$0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0	
 		la	$a1 str_slt
 		jal	strcmp
 		li 	$s7 0x2a
+		sw $0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0	
@@ -2445,37 +2493,52 @@
 		la	$a1 str_sltu
 		jal	strcmp
 		li 	$s7 0x2b
+		sw $0 asm_flag
+		bnez $v0 asm_r_type
+		
+		move	$a0 $s0	
+		la	$a1 str_sra
+		jal	strcmp
+		li 	$s7 0x03
+		li $a0 1
+		sw $a0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0	
 		la	$a1 str_srl
 		jal	strcmp
 		li 	$s7 0x02
+		li $a0 1
+		sw $a0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0	
 		la	$a1 str_srlv
 		jal	strcmp
 		li 	$s7 0x06
+		sw	$0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0	
 		la	$a1 str_sub
 		jal	strcmp
 		li 	$s7 0x22
+		sw $0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0	
 		la	$a1 str_subu
 		jal	strcmp
 		li 	$s7 0x23
+		sw $0 asm_flag
 		bnez $v0 asm_r_type
 
 		move	$a0 $s0	
 		la	$a1 str_sw
 		jal	strcmp
 		li 	$s7 0x2b
-		bnez $v0 asm_i_type
+		sw $0 asm_flag
+		bnez $v0 asm_r_type
 
 		move $a0 $s0			# verifico si es la instruccion syscall
 		la 	$a1 str_syscall
@@ -2484,8 +2547,22 @@
 		
 		li	$a0 0
 		j asm_error
+		
+	asm_get_x:
+		addi	$s0 $s0 -1 	#regresamos a un espacio de memoria anterior para comparar las instrucciones  		
 
-		asm_r_type:			#codifica instrucciones tipo r, 
+		move	$a0 $s0
+		la	$a1 str_xor
+		jal	strcmp
+		li 	$s7 0x26
+		move	$a0 $0      	#no hay shamt
+		sw	$0 asm_flag
+		bnez $v0 asm_r_type
+		
+		j asm_error
+
+	asm_r_type:			#codifica instrucciones tipo r, 
+			#aumentamos el contador
 			lw $s4 text_counter
 			addi $s4 $s4 4
 			sw $s4 text_counter
@@ -2495,22 +2572,31 @@
 			add	$s4 $0 $v0	#ponemos rd en s4 con todo lo dem?s en 0
 			sll	$s4 $s4 11	#corremos rd 11 bits (shamt + func)
 			or	$s7 $s7 $s4	#apendar rd y funct
+
+			lw	$s4 asm_flag	#bandera que indica si necesitamos tomar en cuenta corrimiento
 			
+			beqz	$s4 no_shamt
+
 			addi	$s0 $s0 1	#eliminar espacio
 			jal	asm_regs	#n?mero de registro rs
 			add	$s4 $0 $v0	#ponemos rs en s4 con lo dem?s en 0
-			sll	$s4 $s4 21	#corremos rs 21 bits (shamt + func + rt + rd)
+			sll	$s4 $s4 16	#corremos rs 21 bits (shamt + func + rt + rd)
 			or	$s7 $s7 $s4	#apendar funct
-			
-			lw	$s4 asm_flag	#bandera que indica si necesitamos tomar en cuenta corrimient
-			beqz	$s4 no_shamt
+
 			addi	$s0 $s0 1	#eliminar espacio
 			jal	ascii_to_int	#obtenemos el shamt
 			add	$s4 $0 $v0	#shamt en s4
 			sll	$s4 $s4 6	#shift de 6 bits (funct)
 			or	$s7 $s7 $s4	#apendar shamt
 			j 	asm_r_done
-		no_shamt: 
+		no_shamt:
+
+			addi	$s0 $s0 1	#eliminar espacio
+			jal	asm_regs	#n?mero de registro rs
+			add	$s4 $0 $v0	#ponemos rs en s4 con lo dem?s en 0
+			sll	$s4 $s4 21	#corremos rs 21 bits (shamt + func + rt + rd)
+			or	$s7 $s7 $s4	#apendar funct
+
 			addi	$s0 $s0 1	#eliminar espacio
 			jal	asm_regs	#n?mero de registro rt
 			add	$s4 $0 $v0	#ponemos rt en t2 con todo lo dem?s en 0
@@ -2521,10 +2607,9 @@
 			addi 	$s1 $s1 4
 			li	$s5 0
 			sw	$s5 asm_flag	#setear flag a 0
-	
 			j asm_text_loop
 
-asm_i_type:
+	asm_i_type:
 			#incrementamos contador de direcciones
 			lw $s4 text_counter
 			addi $s4 $s4 4
@@ -2547,7 +2632,48 @@ asm_i_type:
 			sw 	$s7 0($s1)	# almaceno la instruccion codificada
 			addi $s1 $s1 4
 			j asm_text_loop
+		
+		asm_ori:
+			#incrementamos contador de direcciones
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
 			
+			sll 	$s7 $s7 10	# shift porque son 5b de rt + 5b de rs
+			addi $s0 $s0 1		# elimino el espacio
+			jal 	asm_regs       # me devuelve el numero del registro
+			add 	$s7 $s7 $v0	# almaceno el numero del registro en rs
+
+			addi	$s0 $s0 1		# elimino el espacio
+
+			jal 	asm_regs       # me devuelve el numero del registro
+			sll 	$v0 $v0 5		# pongo rs en la posicion que debe ir (van cruzados)
+			or  	$s7 $s7 $v0		# almaceno el numero del registro en rt
+      
+			sll 	$s7 $s7 16	# le hago shift de 16 para hacer espacio al imm
+			addi $s0 $s0 1		# elimino el espacio
+			
+			add $a0 $s0 $0
+			jal string_is_number
+			beqz $v0 ori_not_number	
+			jal 	ascii_to_int	# hago la conversion de ascii a int
+			addu $s7 $s7 $v0 	# concateno el imm con el resto que ya tenia
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi $s1 $s1 4
+			j asm_text_loop
+			
+		ori_not_number:
+			add $a0 $s0 $0
+			jal get_addr_from_st
+			add $t1 $v0 $0
+			sll $t1 $t1 16
+			srl $t1 $t1 16
+			
+			or $s7 $s7 $t1
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi $s1 $s1 4
+			j asm_text_loop
+		
 		asm_branch:
 			#incrementamos contador de direcciones
 			lw $s4 text_counter
@@ -2570,12 +2696,10 @@ asm_i_type:
 			jal get_addr_from_st
 			add $t1 $v0 $0
 			li $t2 0
-			blt $t1 $t0 negative_branch
-				subi $t2 $t2 4
-			negative_branch:
-				sub $t2 $t1 $t0
-				div $t2 $t2 4
-				
+			sub $t2 $t1 $s4 #calculamos el offset y le restamos 1
+			div $t2 $t2 4			
+			sub $t2 $t2 1	
+
 			addu $s7 $s7 $t2 	# concateno el imm con el resto que ya tenia
 			sw 	$s7 0($s1)	# almaceno la instruccion codificada
 			addi $s1 $s1 4
@@ -2583,9 +2707,29 @@ asm_i_type:
 		
 		asm_bgtz:
 			#incrementamos contador de direcciones
-			lw $t0 text_counter
-			addi $t0 $t0 4
-			sw $t0 text_counter
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+
+			sll 	$s7 $s7 10	# shift porque son 5b de rt + 5b de rs
+			addi $s0 $s0 1		# elimino el espacio
+			jal 	asm_regs       # me devuelve el numero del registro
+			sll 	$v0 $v0 5		# pongo rs en la posicion que debe ir (van cruzados)
+			or  	$s7 $s7 $v0		# almaceno el numero del registro en rt
+      
+			sll 	$s7 $s7 16	# le hago shift de 16 para hacer espacio al imm
+			addi $s0 $s0 1		# elimino el espacio
+			add $a0 $s0 $0
+			jal get_addr_from_st
+			add $t1 $v0 $0
+			li $t2 0
+			sub $t2 $t1 $s4 #calculamos el offset y le restamos 1
+			div $t2 $t2 4			
+			sub $t2 $t2 1	
+
+			addu $s7 $s7 $t2 	# concateno el imm con el resto que ya tenia
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi $s1 $s1 4
 			j asm_text_loop
 
 			
@@ -2593,12 +2737,14 @@ asm_i_type:
 			lw $s4 text_counter
 			addi $s4 $s4 4
 			sw $s4 text_counter
+			li $s4 0
 
 			addi $s0 $s0 1		# elimino el espacio
 			jal 	asm_regs	#numero de registro rd
 			add	$s4 $0 $v0	#ponemos rd en s4 con todo lo dem?s en 0
-			sll $s4 $s4 20
-			or $s7 $s7 $4
+			
+			sll $s4 $s4 21
+			or $s7 $s7 $s4
 			sw 	$s7 0($s1)	# almaceno la instruccion codificada
 			addi $s1 $s1 4
 			j asm_text_loop
@@ -2608,15 +2754,107 @@ asm_i_type:
 			addi $s4 $s4 4
 			sw $s4 text_counter
 
-			sll $s7 $s7 25
+			sll $s7 $s7 26
 			addi $s0 $s0 1		# elimino el espacio
 			add $a0 $s0 $0
 			jal get_addr_from_st
-			sll $v0 $v0 6
-			srl $v0 $v0 8		#movemos la direccion solo para obtener los 26 bits que necesitamos
+			sll $v0 $v0 4
+			srl $v0 $v0 6		#movemos la direccion solo para obtener los 26 bits que necesitamos
 			or $s7 $s7 $v0
 			sw 	$s7 0($s1)	# almaceno la instruccion codificada
 			addi $s1 $s1 4
+			
+			j asm_text_loop
+			
+		asm_sw:
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+		
+			sll 	$s7 $s7 26
+			move	$a0 $s0
+			li	$a1 '('
+			jal	string_contains_char
+			move	$s5 $v0
+			addi	$s0 $s0 1	#eliminar espacio
+			jal 	asm_regs	#n?mero de registro
+			add	$s4 $0 $v0
+			sll	$s4 $s4 16
+			or	$s7 $s7 $s4
+			addi	$s0 $s0 1	#eliminar espacio
+			move	$a0 $s0
+			jal	ascii_to_int_generic
+			or	$s7 $s7 $v0
+			beqz	$s5 asm_sw_done
+			li	$t1 '$'
+		asm_sw_loop1:
+			addi	$s0 $s0 1
+			lb	$t0 ($s0)
+			bne	$t0 $t1 asm_sw_loop1
+			jal	asm_regs
+			sll	$v0 $v0 21
+			or	$s7 $s7 $v0
+		asm_sw_done:
+				#copy_extract_reg_gen			
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi $s1 $s1 4
+			j asm_text_loop
+			
+		asm_lui:
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+			
+			sll 	$s7 $s7 10	# shift porque son 5b de rt + 5b de rs
+			addi $s0 $s0 1		# elimino el espacio
+			jal 	asm_regs       # me devuelve el numero del registro
+			add 	$s7 $s7 $v0	# almaceno el numero del registro en rs
+			      
+			sll 	$s7 $s7 16	# le hago shift de 16 para hacer espacio al imm
+			addi $s0 $s0 1		# elimino el espacio
+			jal 	ascii_to_int	# hago la conversion de ascii a int
+			addu $s7 $s7 $v0 	# concateno el imm con el resto que ya tenia
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi $s1 $s1 4
+			j asm_text_loop
+			
+		asm_mult:
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+			
+			addi	$s0 $s0 1	#eliminar espacio
+			jal	asm_regs	#n?mero de registro rs
+			add	$s4 $0 $v0	#ponemos rs en s4 con lo dem?s en 0
+			sll	$s4 $s4 21	#corremos rs 21 bits (shamt + func + rt + rd)
+			or	$s7 $s7 $s4	#apendar funct
+			 
+			addi	$s0 $s0 1	#eliminar espacio
+			jal	asm_regs	#n?mero de registro rt
+			add	$s4 $0 $v0	#ponemos rt en t2 con todo lo dem?s en 0
+			sll	$s4 $s4 16	#corremos rt 16 bits (shamt + func + rd)
+			or	$s7 $s7 $s4
+		asm_mult_done:
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi 	$s1 $s1 4
+			li	$s5 0
+			j asm_text_loop
+
+		asm_mf:
+			lw $s4 text_counter
+			addi $s4 $s4 4
+			sw $s4 text_counter
+			
+			addi	$s0 $s0 1	#eliminar espacio
+			jal	asm_regs	#n?mero de registro rs
+			add	$s4 $0 $v0	#ponemos rs en s4 con lo dem?s en 0
+			sll	$s4 $s4 11	#corremos rs 21 bits (shamt + func + rt + rd)
+			or	$s7 $s7 $s4	#apendar funct
+			
+		asm_mf_done:
+			sw 	$s7 0($s1)	# almaceno la instruccion codificada
+			addi 	$s1 $s1 4
+			li	$s5 0
 			j asm_text_loop
 
 	asm_error:
@@ -2851,6 +3089,11 @@ asm_i_type:
       	li 	$t3 '9'	
       	li 	$t4 10
      	li 	$v0 0
+		li	$t6 '-'
+     	lb 	$t0 0($s0)
+     	seq	$t6 $t0 $t6
+     	beqz	$t6 ascii_to_int_loop
+     	addi	$s0 $s0 1
 
      ascii_to_int_loop:
 		lb 	$t0 0($s0)
@@ -2864,7 +3107,11 @@ asm_i_type:
 		j 	ascii_to_int_loop
 
    	ascii_to_int_exit:
+		beqz	$t6 ascii_to_int_done
+   		neg	$v0 $v0
+   	ascii_to_int_done:
 		jr 	$ra
+
 		
      ######### ascii_to_int_generic ####################
      ascii_to_int_generic:     # the infamous atoi, with no validations!
@@ -2874,6 +3121,11 @@ asm_i_type:
       	li 	$t3 '9'	
       	li 	$t4 10
      	li 	$v0 0
+     	li	$t6 '-'
+		lb	$t0 ($t5)
+		seq	$t6 $t0 $t6
+		beqz	$t6 ascii_to_int_generic_loop
+		addi	$t5 $t5 1
 
      ascii_to_int_generic_loop:
 		lb 	$t0 0($t5)
@@ -2887,7 +3139,12 @@ asm_i_type:
 		j 	ascii_to_int_generic_loop
 
    	ascii_to_int_generic_exit:
+   		beqz	$t6 ascii_to_int_generic_return
+   		neg	$v0 $v0
+   	ascii_to_int_generic_return:
+   		sub	$v1 $t5 $a0
 		jr 	$ra
+
 				
 	######### int_to_ascii ####################
 	
@@ -2938,6 +3195,23 @@ asm_i_type:
 
 	############# strcmp ####################
 	strcmp:
+		addi	$sp $sp -16
+		sw	$a0 0($sp)
+		sw	$a1 4($sp)
+		sw	$s0 8($sp)
+		sw	$ra 12($sp)
+		jal	str_length
+		move	$s0 $v0
+		move	$a0 $a1
+		jal	str_length
+		seq	$t0 $v0 $s0
+		lw	$ra 12($sp)
+		lw	$s0 8($sp)
+		lw	$a1 4($sp)
+		lw	$a0 0($sp)
+		addi	$sp $sp 16
+		beqz	$t0 strcmp_false
+		move 	$t0 $v0
 		li	$t2 ' '
 		li	$t3 '\n'
 		li	$t4 '\t'
@@ -2962,6 +3236,24 @@ asm_i_type:
 	strcmp_false:
 		li	$v0 0
 		jr 	$ra
+		
+	############# str_length ####################
+	str_length:
+		move 	$t1 $a0
+		move	$v0 $0
+	str_length_loop:
+		lb 	$t0 0($t1)
+		beq	$t0 $0 str_length_done
+		li	$t2 '\n'
+		beq	$t0 $t2 str_length_done
+		li	$t2 ' ' 
+		beq	$t0 $t2 str_length_done
+		addi	$v0 $v0 1
+		addi	$t1 $t1 1
+		j	str_length_loop
+	str_length_done:
+		jr	$ra
+
 
      ######### asm_label_check #################
      asm_label_check:			# verifica si la cadena es un label
@@ -3009,6 +3301,31 @@ asm_i_type:
  			
  	copy_extract_reg2_exit:
  		jr $ra
+ 	
+ 	################ copy_extract_reg_gen ################
+	copy_extract_reg_gen:
+ 		la	$t0 reg2
+ 		li	$t2 0 		#flag
+ 		li	$t3 '$'
+ 		li      $t4 ')'
+ 		move	$t5 $a0
+ 	copy_extract_reg_gen_loop:
+ 		lb 	$t1 0($t0)
+ 		addi	$t0 $t0 1
+ 		beqz	$t1 copy_extract_reg2_exit_g
+ 		beq	$t1 $t4 copy_extract_reg2_exit_g
+ 		beq	$t1 $t3 do_copy_gen
+ 		bnez	$t2 do_copy_gen
+ 		j	copy_extract_reg_gen_loop
+ 	do_copy_gen:
+ 		li 	$t2 1
+ 		sb 	$t1 0($t5)
+ 		addi	$t5 $t5 1
+ 		j copy_extract_reg_gen_loop
+ 			
+ 	copy_extract_reg2_exit_g:
+ 		jr $ra
+
  	
  	############## string_contains_char #################
  	string_contains_char:
